@@ -1,6 +1,8 @@
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
 Vars48320 = Vars48320 or {}
 Vars48320.ItemESP = {}
@@ -23,7 +25,9 @@ local targetNames = {
     ["Vitamins"] = true,
     ["Smoothie"] = true,
     ["AlarmClock"] = true,
-    ["Bandage"] = true
+    ["Bandage"] = true,
+    ["Candle"] = true,
+    ["LibraryHintPaper"] = true
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
@@ -33,8 +37,12 @@ local tracers = {}
 local connections = {}
 local renderConnection
 
+local function isIgnored(model)
+    return model:IsDescendantOf(LocalPlayer.Backpack) or model:IsDescendantOf(LocalPlayer.Character)
+end
+
 local function createHighlight(model)
-    if highlights[model] or not Vars48320.ItemESP.Settings.HighlightEnabled then return end
+    if highlights[model] or not Vars48320.ItemESP.Settings.HighlightEnabled or isIgnored(model) then return end
 
     local h = Instance.new("Highlight")
     h.Name = "_ItemESP"
@@ -48,7 +56,7 @@ local function createHighlight(model)
 end
 
 local function createTracer(model)
-    if tracers[model] or not Vars48320.ItemESP.Settings.TracerEnabled then return end
+    if tracers[model] or not Vars48320.ItemESP.Settings.TracerEnabled or isIgnored(model) then return end
 
     local line = Drawing.new("Line")
     line.Thickness = 1.5
@@ -59,13 +67,13 @@ end
 
 local function removeAll()
     for model, h in pairs(highlights) do
-        if h and h.Parent then
-            h:Destroy()
+        if h then
+            pcall(function() h:Destroy() end)
         end
     end
     for model, t in pairs(tracers) do
         if t then
-            t:Remove()
+            pcall(function() t:Remove() end)
         end
     end
     highlights = {}
@@ -74,7 +82,7 @@ end
 
 local function scanWorkspace()
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if targetNames[obj.Name] and obj:IsA("Model") then
+        if targetNames[obj.Name] and obj:IsA("Model") and not isIgnored(obj) then
             createHighlight(obj)
             createTracer(obj)
         end
@@ -82,7 +90,7 @@ local function scanWorkspace()
 end
 
 local function handleNew(child)
-    if targetNames[child.Name] and child:IsA("Model") then
+    if targetNames[child.Name] and child:IsA("Model") and not isIgnored(child) then
         createHighlight(child)
         createTracer(child)
     end
@@ -92,13 +100,13 @@ function Vars48320.ItemESP:Enable()
     self:Disable()
     scanWorkspace()
 
-    table.insert(connections, Workspace.ChildAdded:Connect(handleNew))
     table.insert(connections, Workspace.DescendantAdded:Connect(handleNew))
+    table.insert(connections, Workspace.ChildAdded:Connect(handleNew))
 
     renderConnection = RunService.RenderStepped:Connect(function()
         for model, line in pairs(tracers) do
-            if not model or not model.Parent then
-                line:Remove()
+            if not model or not model.Parent or isIgnored(model) then
+                pcall(function() line:Remove() end)
                 tracers[model] = nil
                 continue
             end
@@ -115,6 +123,13 @@ function Vars48320.ItemESP:Enable()
                 end
             else
                 line.Visible = false
+            end
+        end
+            
+        for model, highlight in pairs(highlights) do
+            if not model or not model.Parent or isIgnored(model) then
+                pcall(function() highlight:Destroy() end)
+                highlights[model] = nil
             end
         end
     end)
