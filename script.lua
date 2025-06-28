@@ -1,83 +1,115 @@
-local targetRoomNumber = 50
-local roomLoaded = false
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+
+Vars48320 = Vars48320 or {}
+Vars48320.ItemESP = {}
+
+local targetNames = {
+    ["LiveHintBook"] = true,
+    ["KeyObtain"] = true,
+    ["LiveBreakerPolePickup"] = true,
+    ["SmoothieSpawner"] = true,
+    ["Shears"] = true
+}
+
+local highlightColor = Color3.fromRGB(0, 255, 255)
+local outlineColor = Color3.fromRGB(255, 255, 255)
+
 local highlights = {}
-local isToggleActive = false
+local tracers = {}
+local connections = {}
+local renderConnection
 
-local function highlightLiveHintBook(model)
-    if not model:FindFirstChildOfClass("Highlight") then
-        local highlight = Instance.new("Highlight")
-        highlight.Parent = model
-        highlight.FillColor = Color3.fromRGB(69, 199, 255)
-        highlight.FillTransparency = 0.5
-        highlight.OutlineColor = Color3.fromRGB(188, 240, 255)
-        highlight.OutlineTransparency = 0.1
-        highlights[model] = highlight
-    end
+local function createHighlight(model)
+    if highlights[model] then return end
+
+    local h = Instance.new("Highlight")
+    h.Name = "_ItemESP"
+    h.FillColor = highlightColor
+    h.OutlineColor = outlineColor
+    h.FillTransparency = 0
+    h.OutlineTransparency = 0
+    h.Adornee = model
+    h.Parent = model
+    highlights[model] = h
 end
 
-local function removeHighlightLiveHintBook(model)
-    local highlight = highlights[model]
-    if highlight then
-        highlight:Destroy()
-        highlights[model] = nil
-    end
+local function createTracer(model)
+    if tracers[model] then return end
+
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Color = highlightColor
+    line.Visible = false
+    tracers[model] = line
 end
 
-local function checkRoomForLiveHintBook(room)
-    for _, descendant in ipairs(room:GetDescendants()) do
-        if descendant.Name == "LiveHintBook" and descendant:IsA("Model") then
-            highlightLiveHintBook(descendant)
+local function removeAll()
+    for model, h in pairs(highlights) do
+        if h and h.Parent then
+            h:Destroy()
+        end
+    end
+    for model, t in pairs(tracers) do
+        if t then
+            t:Remove()
+        end
+    end
+    highlights = {}
+    tracers = {}
+end
+
+local function scanWorkspace()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if targetNames[obj.Name] and obj:IsA("Model") then
+            createHighlight(obj)
+            createTracer(obj)
         end
     end
 end
 
-local function monitorRoom(roomNumber)
-    local room = workspace.CurrentRooms:FindFirstChild(tostring(roomNumber))
-    if room then
-        checkRoomForLiveHintBook(room)
+local function handleNew(child)
+    if targetNames[child.Name] and child:IsA("Model") then
+        createHighlight(child)
+        createTracer(child)
     end
 end
 
-local function waitForRoomAndHighlight()
-    workspace.CurrentRooms.ChildAdded:Connect(function(child)
-        if isToggleActive and child:IsA("Model") then
-            local roomNumber = tonumber(child.Name)
-            if roomNumber == targetRoomNumber then
-                roomLoaded = true
-                monitorRoom(targetRoomNumber)
+function Vars48320.ItemESP:Enable()
+    removeAll()
+    scanWorkspace()
+
+    table.insert(connections, Workspace.ChildAdded:Connect(handleNew))
+    table.insert(connections, Workspace.DescendantAdded:Connect(handleNew))
+
+    renderConnection = RunService.RenderStepped:Connect(function()
+        for model, line in pairs(tracers) do
+            local adornee = model:FindFirstChildWhichIsA("BasePart")
+            if adornee and Camera then
+                local pos, onScreen = Camera:WorldToViewportPoint(adornee.Position)
+                if onScreen then
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
+            else
+                line.Visible = false
             end
         end
     end)
-
-    workspace.CurrentRooms.DescendantAdded:Connect(function(descendant)
-        if isToggleActive and roomLoaded and descendant.Name == "LiveHintBook" and descendant:IsA("Model") then
-            highlightLiveHintBook(descendant)
-        end
-    end)
-
-    local room50 = workspace.CurrentRooms:FindFirstChild(tostring(targetRoomNumber))
-    if isToggleActive and room50 then
-        roomLoaded = true
-        monitorRoom(targetRoomNumber)
-    end
 end
 
-local function clearHighlights()
-    for model, highlight in pairs(highlights) do
-        removeHighlightLiveHintBook(model)
+function Vars48320.ItemESP:Disable()
+    if renderConnection then
+        renderConnection:Disconnect()
+        renderConnection = nil
     end
+    for _, conn in pairs(connections) do
+        conn:Disconnect()
+    end
+    connections = {}
+    removeAll()
 end
-
-LeftGroupBox:AddToggle("LiveHintToggle", {
-    Text = "Highlight LiveHintBook",
-    Default = false,
-    Callback = function(state)
-        isToggleActive = state
-
-        if isToggleActive then
-            waitForRoomAndHighlight()
-        else
-            clearHighlights()
-        end
-    end
-})
