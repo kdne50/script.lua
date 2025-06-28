@@ -5,12 +5,24 @@ local Camera = Workspace.CurrentCamera
 Vars48320 = Vars48320 or {}
 Vars48320.ItemESP = {}
 
+Vars48320.ItemESP.Settings = {
+    HighlightEnabled = true,
+    TracerEnabled = true
+}
+
 local targetNames = {
     ["LiveHintBook"] = true,
     ["KeyObtain"] = true,
     ["LiveBreakerPolePickup"] = true,
     ["SmoothieSpawner"] = true,
-    ["Shears"] = true
+    ["Shears"] = true,
+    ["Lighter"] = true,
+    ["Crucifix"] = true,
+    ["Lockpick"] = true,
+    ["Battery"] = true,
+    ["Vitamins"] = true,
+    ["Smoothie"] = true,
+    ["AlarmClock"] = true
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
@@ -22,7 +34,7 @@ local connections = {}
 local renderConnection
 
 local function createHighlight(model)
-    if highlights[model] then return end
+    if highlights[model] or not Vars48320.ItemESP.Settings.HighlightEnabled then return end
 
     local h = Instance.new("Highlight")
     h.Name = "_ItemESP"
@@ -36,12 +48,12 @@ local function createHighlight(model)
 end
 
 local function createTracer(model)
-    if tracers[model] then return end
+    if tracers[model] or not Vars48320.ItemESP.Settings.TracerEnabled then return end
 
     local line = Drawing.new("Line")
     line.Thickness = 1.5
     line.Color = highlightColor
-    line.Visible = false
+    line.Visible = true
     tracers[model] = line
 end
 
@@ -85,16 +97,18 @@ function Vars48320.ItemESP:Enable()
 
     renderConnection = RunService.RenderStepped:Connect(function()
         for model, line in pairs(tracers) do
+            if not model or not model.Parent then
+                line:Remove()
+                tracers[model] = nil
+                continue
+            end
+
             local adornee = model:FindFirstChildWhichIsA("BasePart")
-            if adornee and Camera then
-                local pos, onScreen = Camera:WorldToViewportPoint(adornee.Position)
-                if onScreen then
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    line.To = Vector2.new(pos.X, pos.Y)
-                    line.Visible = true
-                else
-                    line.Visible = false
-                end
+            if adornee then
+                local pos = Camera:WorldToViewportPoint(adornee.Position)
+                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                line.To = Vector2.new(pos.X, pos.Y)
+                line.Visible = Vars48320.ItemESP.Settings.TracerEnabled
             else
                 line.Visible = false
             end
