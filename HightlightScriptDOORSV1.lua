@@ -22,11 +22,11 @@ local targetNames = {
     ["Battery"] = true,
     ["Vitamins"] = true,
     ["Smoothie"] = true,
-    ["AlarmClock"] = true
+    ["AlarmClock"] = true,
+    ["Bandage"] = true
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
-local outlineColor = Color3.fromRGB(255, 255, 255)
 
 local highlights = {}
 local tracers = {}
@@ -39,7 +39,7 @@ local function createHighlight(model)
     local h = Instance.new("Highlight")
     h.Name = "_ItemESP"
     h.FillColor = highlightColor
-    h.OutlineColor = outlineColor
+    h.OutlineColor = Color3.fromRGB(255, 255, 255)
     h.FillTransparency = 0
     h.OutlineTransparency = 0
     h.Adornee = model
@@ -53,7 +53,7 @@ local function createTracer(model)
     local line = Drawing.new("Line")
     line.Thickness = 1.5
     line.Color = highlightColor
-    line.Visible = true
+    line.Visible = false
     tracers[model] = line
 end
 
@@ -89,7 +89,7 @@ local function handleNew(child)
 end
 
 function Vars48320.ItemESP:Enable()
-    removeAll()
+    self:Disable()
     scanWorkspace()
 
     table.insert(connections, Workspace.ChildAdded:Connect(handleNew))
@@ -103,12 +103,16 @@ function Vars48320.ItemESP:Enable()
                 continue
             end
 
-            local adornee = model:FindFirstChildWhichIsA("BasePart")
-            if adornee then
-                local pos = Camera:WorldToViewportPoint(adornee.Position)
-                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                line.To = Vector2.new(pos.X, pos.Y)
-                line.Visible = Vars48320.ItemESP.Settings.TracerEnabled
+            local part = model:FindFirstChildWhichIsA("BasePart")
+            if part then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen and Vars48320.ItemESP.Settings.TracerEnabled then
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    line.To = Vector2.new(screenPos.X, screenPos.Y)
+                    line.Visible = true
+                else
+                    line.Visible = false
+                end
             else
                 line.Visible = false
             end
