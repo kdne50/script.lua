@@ -27,10 +27,18 @@ local targetNames = {
     ["AlarmClock"] = true,
     ["Bandage"] = true,
     ["Candle"] = true,
-    ["LibraryHintPaper"] = true
+    ["LibraryHintPaper"] = true,
+    ["SkeletonKey"] = true,
+    ["Flashlight"] = true,
+    ["RiftSmoothie"] = true,
+    ["FuseObtain"] = true,
+    ["BandagePack"] = true,
+    ["Bulklight"] = true,
+    ["Straplight"] = true
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
+local outlineColor = Color3.fromRGB(255, 255, 255)
 
 local highlights = {}
 local tracers = {}
@@ -42,13 +50,13 @@ local function isIgnored(model)
 end
 
 local function createHighlight(model)
-    if highlights[model] or not Vars48320.ItemESP.Settings.HighlightEnabled or isIgnored(model) then return end
+    if highlights[model] or isIgnored(model) then return end
 
     local h = Instance.new("Highlight")
     h.Name = "_ItemESP"
     h.FillColor = highlightColor
-    h.OutlineColor = Color3.fromRGB(255, 255, 255)
-    h.FillTransparency = 0
+    h.OutlineColor = outlineColor
+    h.FillTransparency = 0.8
     h.OutlineTransparency = 0
     h.Adornee = model
     h.Parent = model
@@ -83,16 +91,24 @@ end
 local function scanWorkspace()
     for _, obj in pairs(Workspace:GetDescendants()) do
         if targetNames[obj.Name] and obj:IsA("Model") and not isIgnored(obj) then
-            createHighlight(obj)
-            createTracer(obj)
+            if Vars48320.ItemESP.Settings.HighlightEnabled then
+                createHighlight(obj)
+            end
+            if Vars48320.ItemESP.Settings.TracerEnabled then
+                createTracer(obj)
+            end
         end
     end
 end
 
 local function handleNew(child)
     if targetNames[child.Name] and child:IsA("Model") and not isIgnored(child) then
-        createHighlight(child)
-        createTracer(child)
+        if Vars48320.ItemESP.Settings.HighlightEnabled then
+            createHighlight(child)
+        end
+        if Vars48320.ItemESP.Settings.TracerEnabled then
+            createTracer(child)
+        end
     end
 end
 
@@ -105,7 +121,7 @@ function Vars48320.ItemESP:Enable()
 
     renderConnection = RunService.RenderStepped:Connect(function()
         for model, line in pairs(tracers) do
-            if not model or not model.Parent or isIgnored(model) then
+            if not model or not model.Parent or isIgnored(model) or not Vars48320.ItemESP.Settings.TracerEnabled then
                 pcall(function() line:Remove() end)
                 tracers[model] = nil
                 continue
@@ -113,21 +129,20 @@ function Vars48320.ItemESP:Enable()
 
             local part = model:FindFirstChildWhichIsA("BasePart")
             if part then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen and Vars48320.ItemESP.Settings.TracerEnabled then
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    line.To = Vector2.new(screenPos.X, screenPos.Y)
-                    line.Visible = true
-                else
-                    line.Visible = false
-                end
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                line.To = Vector2.new(pos.X, pos.Y)
+                line.Visible = onScreen
             else
                 line.Visible = false
             end
         end
-            
+
         for model, highlight in pairs(highlights) do
             if not model or not model.Parent or isIgnored(model) then
+                pcall(function() highlight:Destroy() end)
+                highlights[model] = nil
+            elseif not Vars48320.ItemESP.Settings.HighlightEnabled then
                 pcall(function() highlight:Destroy() end)
                 highlights[model] = nil
             end
