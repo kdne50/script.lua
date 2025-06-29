@@ -74,8 +74,8 @@ local function addNameTag(model)
         billboard.Name = "_ESP_NameTag"
         billboard.Adornee = part
         billboard.AlwaysOnTop = true
-        billboard.Size = UDim2.new(0, 100, 0, 30)
-        billboard.StudsOffset = Vector3.new(0, part.Size.Y/2, 0)
+        billboard.Size = UDim2.new(0, 200, 0, 100)
+        billboard.StudsOffset = Vector3.new(0, -1, 0)
         billboard.Parent = model
 
         local label = Instance.new("TextLabel")
