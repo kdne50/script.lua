@@ -16,7 +16,9 @@ local targetNames = {
     ["SkeletonKey"] = true, ["Flashlight"] = true, ["RiftSmoothie"] = true,
     ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true,
     ["Straplight"] = true, ["Glowsticks"] = true, ["BatteryPack"] = true,
-    ["LaserPointer"] = true
+    ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true, ["Starlight Bottle"] = true,
+    ["Starlight Jug"] = true, ["Shakelight"] = true, ["Gween Soda"] = true,
+    ["Bread"] = true, ["Cheese"] = true
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
@@ -35,10 +37,18 @@ local function isIgnored(model)
 end
 
 local function clearESP()
-    for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
-    for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
-    for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
-    highlights, tracers, nametags = {}, {}, {}
+    for model, h in pairs(highlights) do
+        if h then pcall(function() h:Destroy() end) end
+        highlights[model] = nil
+    end
+    for model, t in pairs(tracers) do
+        if t then pcall(function() t:Remove() end) end
+        tracers[model] = nil
+    end
+    for model, n in pairs(nametags) do
+        if n then pcall(function() n:Destroy() end) end
+        nametags[model] = nil
+    end
 end
 
 local function addHighlight(model)
@@ -74,7 +84,7 @@ local function addNameTag(model)
         billboard.Name = "_ESP_NameTag"
         billboard.Adornee = part
         billboard.AlwaysOnTop = true
-        billboard.Size = UDim2.new(0, 100, 0, 60)
+        billboard.Size = UDim2.new(0, 200, 0, 50)
         billboard.StudsOffset = Vector3.new(0, -0.5, 0)
         billboard.Parent = model
 
@@ -120,17 +130,25 @@ local function enable()
 
     renderConnection = RunService.RenderStepped:Connect(function()
         for model, line in pairs(tracers) do
-            local part = model:FindFirstChildWhichIsA("BasePart")
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
                 tracers[model] = nil
-            elseif part then
-                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                line.To = Vector2.new(pos.X, pos.Y)
-                line.Visible = onScreen
             else
-                line.Visible = false
+                local part = model:FindFirstChildWhichIsA("BasePart")
+                if part then
+                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.Visible = onScreen
+                else
+                    line.Visible = false
+                end
+            end
+        end
+        for model, tag in pairs(nametags) do
+            if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
+                pcall(function() tag:Destroy() end)
+                nametags[model] = nil
             end
         end
     end)
