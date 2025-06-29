@@ -1,3 +1,6 @@
+-- ✅ Оптимизированный и доработанный ESP для предметов с Highlight, Tracer и Billboard NameTag
+-- 📌 Удаление старых элементов, отображение имён по центру, оптимизация по кадру
+
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
@@ -5,42 +8,22 @@ local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 local targetNames = {
-    ["LiveHintBook"] = true,
-    ["KeyObtain"] = true,
-    ["LiveBreakerPolePickup"] = true,
-    ["SmoothieSpawner"] = true,
-    ["Shears"] = true,
-    ["Lighter"] = true,
-    ["Crucifix"] = true,
-    ["Lockpick"] = true,
-    ["Battery"] = true,
-    ["Vitamins"] = true,
-    ["Smoothie"] = true,
-    ["AlarmClock"] = true,
-    ["Bandage"] = true,
-    ["Candle"] = true,
-    ["LibraryHintPaper"] = true,
-    ["SkeletonKey"] = true,
-    ["Flashlight"] = true,
-    ["RiftSmoothie"] = true,
-    ["FuseObtain"] = true,
-    ["BandagePack"] = true,
-    ["Bulklight"] = true,
-    ["Straplight"] = true,
-    ["Glowsticks"] = true,
-    ["BatteryPack"] = true,
+    ["LiveHintBook"] = true, ["KeyObtain"] = true, ["LiveBreakerPolePickup"] = true,
+    ["SmoothieSpawner"] = true, ["Shears"] = true, ["Lighter"] = true,
+    ["Crucifix"] = true, ["Lockpick"] = true, ["Battery"] = true,
+    ["Vitamins"] = true, ["Smoothie"] = true, ["AlarmClock"] = true,
+    ["Bandage"] = true, ["Candle"] = true, ["LibraryHintPaper"] = true,
+    ["SkeletonKey"] = true, ["Flashlight"] = true, ["RiftSmoothie"] = true,
+    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true,
+    ["Straplight"] = true, ["Glowsticks"] = true, ["BatteryPack"] = true,
     ["LaserPointer"] = true
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
 local outlineColor = Color3.fromRGB(255, 255, 255)
 
-local highlights = {}
-local tracers = {}
-local nametags = {}
-local connections = {}
-local renderConnection
-
+local highlights, tracers, nametags = {}, {}, {}
+local connections, renderConnection = {}, nil
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
@@ -51,156 +34,134 @@ local function isIgnored(model)
     return model:IsDescendantOf(LocalPlayer.Backpack) or model:IsDescendantOf(LocalPlayer.Character)
 end
 
-local function createHighlight(model)
-    if highlights[model] or isIgnored(model) or not settings.HighlightEnabled then return end
-    local h = Instance.new("Highlight")
-    h.Name = "_ItemESP"
-    h.FillColor = highlightColor
-    h.OutlineColor = outlineColor
-    h.FillTransparency = 0.8
-    h.OutlineTransparency = 0
-    h.Adornee = model
-    h.Parent = model
-    highlights[model] = h
-end
-
-local function createTracer(model)
-    if tracers[model] or isIgnored(model) or not settings.TracerEnabled then return end
-    local line = Drawing.new("Line")
-    line.Thickness = 1.5
-    line.Color = highlightColor
-    line.Visible = false
-    tracers[model] = line
-end
-
-local function createNameTag(model)
-    if nametags[model] or isIgnored(model) or not settings.NameTagEnabled then return end
-
-    local adorneePart = model:FindFirstChildWhichIsA("BasePart")
-    if not adorneePart then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "_ESP_NameTag"
-    billboard.Adornee = adorneePart
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(0, 100, 0, 30)
-    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-    billboard.Parent = model
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = model.Name
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextStrokeTransparency = 0.5
-    label.TextScaled = true
-    label.Font = Enum.Font.SourceSansBold
-    label.Parent = billboard
-
-    nametags[model] = billboard
-end
-
-local function removeAll()
+local function clearESP()
     for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
     for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
     for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
     highlights, tracers, nametags = {}, {}, {}
 end
 
-local function scanWorkspace()
+local function addHighlight(model)
+    if not highlights[model] and settings.HighlightEnabled then
+        local h = Instance.new("Highlight")
+        h.Name = "_ItemESP"
+        h.FillColor = highlightColor
+        h.OutlineColor = outlineColor
+        h.FillTransparency = 0.8
+        h.OutlineTransparency = 0
+        h.Adornee = model
+        h.Parent = model
+        highlights[model] = h
+    end
+end
+
+local function addTracer(model)
+    if not tracers[model] and settings.TracerEnabled then
+        local line = Drawing.new("Line")
+        line.Thickness = 1.5
+        line.Color = highlightColor
+        line.Visible = false
+        tracers[model] = line
+    end
+end
+
+local function addNameTag(model)
+    if not nametags[model] and settings.NameTagEnabled then
+        local part = model:FindFirstChildWhichIsA("BasePart")
+        if not part then return end
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "_ESP_NameTag"
+        billboard.Adornee = part
+        billboard.AlwaysOnTop = true
+        billboard.Size = UDim2.new(0, 100, 0, 30)
+        billboard.StudsOffset = Vector3.new(0, part.Size.Y/2, 0)
+        billboard.Parent = model
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = model.Name
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextStrokeTransparency = 0.5
+        label.TextScaled = true
+        label.Font = Enum.Font.SourceSansBold
+        label.Parent = billboard
+
+        nametags[model] = billboard
+    end
+end
+
+local function processModel(model)
+    if targetNames[model.Name] and model:IsA("Model") and not isIgnored(model) then
+        addHighlight(model)
+        addTracer(model)
+        addNameTag(model)
+    end
+end
+
+local function scan()
+    clearESP()
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if targetNames[obj.Name] and obj:IsA("Model") and not isIgnored(obj) then
-            createHighlight(obj)
-            createTracer(obj)
-            createNameTag(obj)
-        end
+        processModel(obj)
     end
 end
 
-local function handleNew(child)
-    if targetNames[child.Name] and child:IsA("Model") and not isIgnored(child) then
-        createHighlight(child)
-        createTracer(child)
-        createNameTag(child)
-    end
+local function onNewChild(obj)
+    task.delay(0.05, function()
+        processModel(obj)
+    end)
 end
 
-local function enableESP()
-    disableESP()
-    scanWorkspace()
-    table.insert(connections, Workspace.DescendantAdded:Connect(handleNew))
-    table.insert(connections, Workspace.ChildAdded:Connect(handleNew))
+local function enable()
+    disable()
+    scan()
+    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
     renderConnection = RunService.RenderStepped:Connect(function()
-        for model, tracer in pairs(tracers) do
+        for model, line in pairs(tracers) do
+            local part = model:FindFirstChildWhichIsA("BasePart")
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
-                pcall(function() tracer:Remove() end)
+                pcall(function() line:Remove() end)
                 tracers[model] = nil
+            elseif part then
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                line.To = Vector2.new(pos.X, pos.Y)
+                line.Visible = onScreen
             else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    tracer.To = Vector2.new(pos.X, pos.Y)
-                    tracer.Visible = onScreen
-                else
-                    tracer.Visible = false
-                end
-            end
-        end
-
-        for model, _ in pairs(highlights) do
-            if not model or not model.Parent or isIgnored(model) or not settings.HighlightEnabled then
-                pcall(function() highlights[model]:Destroy() end)
-                highlights[model] = nil
-            end
-        end
-
-        if settings.HighlightEnabled then
-            for _, model in pairs(Workspace:GetDescendants()) do
-                if targetNames[model.Name] and model:IsA("Model") and not highlights[model] and not isIgnored(model) then
-                    createHighlight(model)
-                end
+                line.Visible = false
             end
         end
     end)
 end
 
-function disableESP()
+function disable()
     if renderConnection then renderConnection:Disconnect() end
     for _, conn in pairs(connections) do conn:Disconnect() end
     connections = {}
-    removeAll()
+    clearESP()
 end
 
-function setHighlightEnabled(state)
-    settings.HighlightEnabled = state
+function setHighlight(v)
+    settings.HighlightEnabled = v
+    scan()
 end
 
-function setTracerEnabled(state)
-    settings.TracerEnabled = state
+function setTracer(v)
+    settings.TracerEnabled = v
+    scan()
 end
 
-function setNameTagEnabled(state)
-    settings.NameTagEnabled = state
-    if not state then
-        for _, gui in pairs(nametags) do
-            pcall(function() gui:Destroy() end)
-        end
-        nametags = {}
-    else
-        for model, _ in pairs(highlights) do
-            if not nametags[model] then
-                createNameTag(model)
-            end
-        end
-    end
+function setNameTag(v)
+    settings.NameTagEnabled = v
+    scan()
 end
 
 return {
-    EnableESP = enableESP,
-    DisableESP = disableESP,
-    SetHighlight = setHighlightEnabled,
-    SetTracer = setTracerEnabled,
-    SetNameTag = setNameTagEnabled
+    EnableESP = enable,
+    DisableESP = disable,
+    SetHighlight = setHighlight,
+    SetTracer = setTracer,
+    SetNameTag = setNameTag
 }
