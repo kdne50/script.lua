@@ -75,21 +75,35 @@ end
 
 local function createNameTag(model)
     if nametags[model] or isIgnored(model) or not settings.NameTagEnabled then return end
-    local text = Drawing.new("Text")
-    text.Size = 14
-    text.Center = true
-    text.Outline = true
-    text.OutlineColor = Color3.new(0, 0, 0)
-    text.Color = Color3.fromRGB(255, 255, 255)
-    text.Text = model.Name
-    text.Visible = false
-    nametags[model] = text
+
+    local adorneePart = model:FindFirstChildWhichIsA("BasePart")
+    if not adorneePart then return end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "_ESP_NameTag"
+    billboard.Adornee = adorneePart
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(0, 100, 0, 30)
+    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.Parent = model
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = model.Name
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextStrokeTransparency = 0.5
+    label.TextScaled = true
+    label.Font = Enum.Font.SourceSansBold
+    label.Parent = billboard
+
+    nametags[model] = billboard
 end
 
 local function removeAll()
     for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
     for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
-    for _, n in pairs(nametags) do pcall(function() n:Remove() end) end
+    for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
     highlights, tracers, nametags = {}, {}, {}
 end
 
@@ -135,25 +149,9 @@ local function enableESP()
             end
         end
 
-        for model, tag in pairs(nametags) do
-            if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
-                pcall(function() tag:Remove() end)
-                nametags[model] = nil
-            else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position + Vector3.new(0, 2, 0))
-                    tag.Position = Vector2.new(pos.X, pos.Y)
-                    tag.Visible = onScreen
-                else
-                    tag.Visible = false
-                end
-            end
-        end
-
-        for model, highlight in pairs(highlights) do
+        for model, _ in pairs(highlights) do
             if not model or not model.Parent or isIgnored(model) or not settings.HighlightEnabled then
-                pcall(function() highlight:Destroy() end)
+                pcall(function() highlights[model]:Destroy() end)
                 highlights[model] = nil
             end
         end
@@ -175,18 +173,6 @@ function disableESP()
     removeAll()
 end
 
-function enableNameTags()
-    settings.NameTagEnabled = true
-end
-
-function disableNameTags()
-    settings.NameTagEnabled = false
-    for _, tag in pairs(nametags) do
-        pcall(function() tag:Remove() end)
-    end
-    nametags = {}
-end
-
 function setHighlightEnabled(state)
     settings.HighlightEnabled = state
 end
@@ -196,14 +182,21 @@ function setTracerEnabled(state)
 end
 
 function setNameTagEnabled(state)
-    if state then
-        enableNameTags()
+    settings.NameTagEnabled = state
+    if not state then
+        for _, gui in pairs(nametags) do
+            pcall(function() gui:Destroy() end)
+        end
+        nametags = {}
     else
-        disableNameTags()
+        for model, _ in pairs(highlights) do
+            if not nametags[model] then
+                createNameTag(model)
+            end
+        end
     end
 end
 
--- Возврат функций наружу (можно подключить в библиотеку):
 return {
     EnableESP = enableESP,
     DisableESP = disableESP,
