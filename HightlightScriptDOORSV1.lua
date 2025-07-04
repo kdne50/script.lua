@@ -86,6 +86,9 @@ local function addTracer(model)
     local basePart = model:FindFirstChildWhichIsA("BasePart")
     if not basePart then return end
 
+    -- Проверяем доступность Drawing API
+    if not (Drawing and Drawing.new) then return end
+
     local line = Drawing.new("Line")
     line.Thickness = 1.5
     line.Color = highlightColor
