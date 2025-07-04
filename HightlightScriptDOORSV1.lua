@@ -65,7 +65,6 @@ end
 
 local function addTracer(model)
     if not tracers[model] and settings.TracerEnabled then
-        if typeof(Drawing) ~= "table" or typeof(Drawing.new) ~= "function" then return end
         local line = Drawing.new("Line")
         line.Thickness = 1.5
         line.Color = highlightColor
@@ -122,6 +121,7 @@ local function onNewChild(obj)
     end)
 end
 
+-- HSV to RGB функция для радуги
 local function HSVToRGB(h, s, v)
     local c = v * s
     local x = c * (1 - math.abs((h * 6) % 2 - 1))
@@ -153,7 +153,7 @@ local function enable()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
     renderConnection = RunService.RenderStepped:Connect(function(dt)
-        hue = (hue + dt * (0.5/3)) % 1 -- радужный эффект в 3 раза медленнее
+        hue = (hue + dt * (0.5/6)) % 1  -- радужный эффект замедлен в 6 раз
 
         -- Обновляем Highlight цвета
         for model, h in pairs(highlights) do
@@ -169,7 +169,7 @@ local function enable()
             end
         end
 
-        -- Обновляем Tracers
+        -- Отсюда взят твой оригинальный tracer код (без изменений), только убрал From.Y на центр экрана
         for model, line in pairs(tracers) do
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
@@ -178,7 +178,7 @@ local function enable()
                 local part = model:FindFirstChildWhichIsA("BasePart")
                 if part then
                     local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) -- центр экрана
                     line.To = Vector2.new(pos.X, pos.Y)
                     line.Visible = onScreen
                 else
@@ -221,7 +221,7 @@ end
 
 function setRainbowHighlight(v)
     settings.RainbowHighlight = v
-    -- Немного обновим цвета сразу
+    -- Можно сразу обновить цвета, если нужно
     for model, h in pairs(highlights) do
         if h and h.Parent then
             if settings.RainbowHighlight then
