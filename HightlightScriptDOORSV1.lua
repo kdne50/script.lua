@@ -1,182 +1,239 @@
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
-local ESP = {}
-local settings = {
-    Highlight = true,
-    Tracer = true,
-    NameTag = true,
-    Rainbow = false,
-    ShowDistance = true
+local targetNames = {
+    ["LiveHintBook"] = true, ["KeyObtain"] = true, ["LiveBreakerPolePickup"] = true,
+    ["SmoothieSpawner"] = true, ["Shears"] = true, ["Lighter"] = true,
+    ["Crucifix"] = true, ["Lockpick"] = true, ["Battery"] = true,
+    ["Vitamins"] = true, ["Smoothie"] = true, ["AlarmClock"] = true,
+    ["Bandage"] = true, ["Candle"] = true, ["LibraryHintPaper"] = true,
+    ["SkeletonKey"] = true, ["Flashlight"] = true, ["RiftSmoothie"] = true,
+    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true,
+    ["Straplight"] = true, ["Glowsticks"] = true, ["BatteryPack"] = true,
+    ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true, ["Starlight Bottle"] = true,
+    ["Starlight Jug"] = true, ["Shakelight"] = true, ["Gween Soda"] = true,
+    ["Bread"] = true, ["Cheese"] = true
 }
 
-local targets = {
-    ["KeyObtain"] = true, ["Flashlight"] = true, ["Lockpick"] = true,
-    ["Crucifix"] = true, ["Vitamins"] = true, ["Lighter"] = true,
-    ["SkeletonKey"] = true, ["Battery"] = true, ["Bandage"] = true,
-    ["Smoothie"] = true, ["Candle"] = true, ["Shears"] = true,
-    ["AlarmClock"] = true, ["LiveHintBook"] = true, ["LiveBreakerPolePickup"] = true
-}
+local highlightColor = Color3.fromRGB(0, 255, 255)
+local outlineColor = Color3.fromRGB(255, 255, 255)
 
-local active = {highlights = {}, tracers = {}, tags = {}}
+local highlights, tracers, nametags = {}, {}, {}
 local connections, renderConnection = {}, nil
-local hue = 0
+local settings = {
+    HighlightEnabled = true,
+    TracerEnabled = true,
+    NameTagEnabled = false,
+    ShowDistance = false,
+    RainbowEnabled = false
+}
 
-local function getPart(model)
-    return model:FindFirstChildWhichIsA("BasePart")
-end
+local RunConnection
 
+-- Проверка, игнорируем ли объект (например, у игрока в рюкзаке или персонаже)
 local function isIgnored(model)
-    return model:IsDescendantOf(LocalPlayer.Character) or model:IsDescendantOf(LocalPlayer.Backpack)
+    return model:IsDescendantOf(LocalPlayer.Backpack) or model:IsDescendantOf(LocalPlayer.Character)
 end
 
-local function rainbowColor()
-    hue = (hue + 0.0025) % 1
-    return Color3.fromHSV(hue, 1, 1)
+-- Очистка всех ESP элементов
+local function clearESP()
+    for model, h in pairs(highlights) do
+        if h then pcall(function() h:Destroy() end) end
+        highlights[model] = nil
+    end
+    for model, t in pairs(tracers) do
+        if t then pcall(function() t:Remove() end) end
+        tracers[model] = nil
+    end
+    for model, n in pairs(nametags) do
+        if n then pcall(function() n:Destroy() end) end
+        nametags[model] = nil
+    end
 end
 
-local function clear(model)
-    if active.highlights[model] then pcall(function() active.highlights[model]:Destroy() end) end
-    if active.tracers[model] then pcall(function() active.tracers[model]:Remove() end) end
-    if active.tags[model] then pcall(function() active.tags[model]:Destroy() end) end
-    active.highlights[model] = nil
-    active.tracers[model] = nil
-    active.tags[model] = nil
-end
-
+-- Добавить Highlight
 local function addHighlight(model)
-    if not settings.Highlight then return end
-    if active.highlights[model] then return end
-
-    local h = Instance.new("Highlight")
-    h.Name = "_ESP_HL"
-    h.FillColor = settings.Rainbow and rainbowColor() or Color3.fromRGB(0, 255, 255)
-    h.OutlineColor = Color3.fromRGB(255, 255, 255)
-    h.FillTransparency = 1
-    h.OutlineTransparency = 1
-    h.Adornee = model
-    h.Parent = model
-
-    TweenService:Create(h, TweenInfo.new(0.25), {
-        FillTransparency = 0.75,
-        OutlineTransparency = 0
-    }):Play()
-
-    active.highlights[model] = h
+    if not highlights[model] and settings.HighlightEnabled then
+        local h = Instance.new("Highlight")
+        h.Name = "_ItemESP"
+        h.FillColor = highlightColor
+        h.OutlineColor = outlineColor
+        h.FillTransparency = 0.8
+        h.OutlineTransparency = 0
+        h.Adornee = model
+        h.Parent = model
+        highlights[model] = h
+    end
 end
 
+-- Добавить Tracer (линия от низа экрана к объекту)
 local function addTracer(model)
-    if not settings.Tracer then return end
-    if active.tracers[model] then return end
-
-    local line = Drawing.new("Line")
-    line.Thickness = 1.5
-    line.Color = settings.Rainbow and rainbowColor() or Color3.fromRGB(0, 255, 255)
-    line.Visible = false
-
-    active.tracers[model] = line
+    if not tracers[model] and settings.TracerEnabled then
+        local line = Drawing.new("Line")
+        line.Thickness = 1.5
+        line.Color = highlightColor
+        line.Visible = false
+        tracers[model] = line
+    end
 end
 
+-- Добавить NameTag
 local function addNameTag(model)
-    if not settings.NameTag then return end
-    if active.tags[model] then return end
+    if not nametags[model] and settings.NameTagEnabled then
+        local part = model:FindFirstChildWhichIsA("BasePart")
+        if not part then return end
 
-    local part = getPart(model)
-    if not part then return end
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "_ESP_NameTag"
+        billboard.Adornee = part
+        billboard.AlwaysOnTop = true
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 2, 0)
+        billboard.Parent = model
 
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "_ESP_Tag"
-    billboard.Adornee = part
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 1.5, 0)
-    billboard.Parent = model
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = model.Name
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextStrokeTransparency = 0.5
+        label.TextScaled = true
+        label.Font = Enum.Font.SourceSansBold
+        label.Parent = billboard
 
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.TextStrokeTransparency = 0.5
-    label.TextScaled = true
-    label.Font = Enum.Font.SourceSansBold
-    label.Text = model.Name
-    label.Parent = billboard
-
-    active.tags[model] = billboard
+        nametags[model] = billboard
+    end
 end
 
-local function process(model)
-    if not targets[model.Name] then return end
-    if isIgnored(model) then return end
-    addHighlight(model)
-    addTracer(model)
-    addNameTag(model)
-end
-
-local function updateRender()
-    for model, line in pairs(active.tracers) do
-        if not model or not model.Parent or not getPart(model) then clear(model) continue end
-        local part = getPart(model)
-        local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-        line.Visible = onScreen
-        if onScreen then
-            line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
-            line.To = Vector2.new(screenPos.X, screenPos.Y)
-            line.Color = settings.Rainbow and rainbowColor() or Color3.fromRGB(0, 255, 255)
+-- Обновление цвета хайлайта и трейсера (для радуги)
+local function updateColors(color)
+    for _, h in pairs(highlights) do
+        if h and h.FillColor then
+            h.FillColor = color
+            h.OutlineColor = color
         end
     end
+    for _, t in pairs(tracers) do
+        if t then
+            t.Color = color
+        end
+    end
+end
 
-    for model, tag in pairs(active.tags) do
-        if tag and tag:FindFirstChildOfClass("TextLabel") then
-            local part = getPart(model)
-            if part and settings.ShowDistance then
-                local dist = math.floor((part.Position - Camera.CFrame.Position).Magnitude)
-                tag.TextLabel.Text = model.Name .. " [" .. dist .. "m]"
+-- Обработка одной модели (добавление ESP если нужно)
+local function processModel(model)
+    if targetNames[model.Name] and model:IsA("Model") and not isIgnored(model) then
+        addHighlight(model)
+        addTracer(model)
+        addNameTag(model)
+    end
+end
+
+-- Сканы всех объектов в Workspace
+local function scan()
+    clearESP()
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        processModel(obj)
+    end
+end
+
+-- Обработка нового объекта
+local function onNewChild(obj)
+    task.delay(0.05, function()
+        processModel(obj)
+    end)
+end
+
+-- Основной цикл для обновления трейсеров и отображения
+local function onRenderStep()
+    local color = highlightColor
+    if settings.RainbowEnabled then
+        local hue = tick() % 5 / 5 -- плавный переход цвета за 5 секунд
+        color = Color3.fromHSV(hue, 1, 1)
+        updateColors(color)
+    end
+
+    for model, line in pairs(tracers) do
+        if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
+            pcall(function() line:Remove() end)
+            tracers[model] = nil
+        else
+            local part = model:FindFirstChildWhichIsA("BasePart")
+            if part then
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                line.To = Vector2.new(pos.X, pos.Y)
+                line.Visible = onScreen
+            else
+                line.Visible = false
             end
         end
     end
 
-    for model, hl in pairs(active.highlights) do
-        if hl then
-            hl.FillColor = settings.Rainbow and rainbowColor() or Color3.fromRGB(0, 255, 255)
-            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    for model, tag in pairs(nametags) do
+        if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
+            pcall(function() tag:Destroy() end)
+            nametags[model] = nil
         end
     end
 end
 
-local function scan()
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") then process(obj) end
+-- Включение ESP
+local function EnableESP()
+    DisableESP()
+    scan()
+    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
+    RunConnection = RunService.RenderStepped:Connect(onRenderStep)
+end
+
+-- Отключение ESP
+function DisableESP()
+    if RunConnection then
+        RunConnection:Disconnect()
+        RunConnection = nil
+    end
+    for _, conn in pairs(connections) do conn:Disconnect() end
+    connections = {}
+    clearESP()
+end
+
+-- Сеттеры настроек
+local function SetHighlight(value)
+    settings.HighlightEnabled = value
+    scan()
+end
+
+local function SetTracer(value)
+    settings.TracerEnabled = value
+    scan()
+end
+
+local function SetNameTag(value)
+    settings.NameTagEnabled = value
+    scan()
+end
+
+local function SetShowDistance(value)
+    settings.ShowDistance = value
+    -- реализуй, если хочешь, отображение расстояния в NameTag или Label
+end
+
+local function SetRainbow(value)
+    settings.RainbowEnabled = value
+    if not value then
+        updateColors(highlightColor)
     end
 end
 
-local function onAdd(obj)
-    task.wait(0.1)
-    if obj:IsA("Model") then process(obj) end
-end
-
-function ESP:Enable()
-    ESP:Disable()
-    scan()
-    table.insert(connections, Workspace.DescendantAdded:Connect(onAdd))
-    renderConnection = RunService.RenderStepped:Connect(updateRender)
-end
-
-function ESP:Disable()
-    if renderConnection then renderConnection:Disconnect() end
-    for _, c in pairs(connections) do c:Disconnect() end
-    connections = {}
-    for m in pairs(active.highlights) do clear(m) end
-end
-
-function ESP:ToggleRainbow(v) settings.Rainbow = v end
-function ESP:ToggleDistance(v) settings.ShowDistance = v end
-function ESP:ToggleTracer(v) settings.Tracer = v end
-function ESP:ToggleHighlight(v) settings.Highlight = v end
-function ESP:ToggleNameTag(v) settings.NameTag = v end
-
-return ESP
+return {
+    EnableESP = EnableESP,
+    DisableESP = DisableESP,
+    SetHighlight = SetHighlight,
+    SetTracer = SetTracer,
+    SetNameTag = SetNameTag,
+    SetShowDistance = SetShowDistance,
+    SetRainbow = SetRainbow
+}
