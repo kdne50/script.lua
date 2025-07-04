@@ -126,9 +126,6 @@ local function enable()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
     renderConnection = RunService.RenderStepped:Connect(function()
-        local screenCenterX = Camera.ViewportSize.X / 2
-        local screenBottomY = Camera.ViewportSize.Y
-
         for model, line in pairs(tracers) do
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
@@ -137,7 +134,7 @@ local function enable()
                 local part = model:FindFirstChildWhichIsA("BasePart")
                 if part then
                     local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(screenCenterX, screenBottomY)
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     line.To = Vector2.new(pos.X, pos.Y)
                     line.Visible = onScreen
                 else
@@ -145,7 +142,6 @@ local function enable()
                 end
             end
         end
-
         for model, tag in pairs(nametags) do
             if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
                 pcall(function() tag:Destroy() end)
