@@ -21,18 +21,13 @@ local targetNames = {
 local highlightColor = Color3.fromRGB(0, 255, 255)
 local outlineColor = Color3.fromRGB(255, 255, 255)
 
-local highlights = {}
-local tracers = {}
-local nametags = {}
-
-local connections = {}
-local renderConnection = nil
-
+local highlights, tracers, nametags = {}, {}, {}
+local connections, renderConnection = {}, nil
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
     NameTagEnabled = false,
-    RainbowHighlight = false,
+    RainbowHighlight = false
 }
 
 local function isIgnored(model)
@@ -41,98 +36,77 @@ end
 
 local function clearESP()
     for model, h in pairs(highlights) do
-        if h and h.Parent then
-            pcall(function() h:Destroy() end)
-        end
+        if h then pcall(function() h:Destroy() end) end
+        highlights[model] = nil
     end
-    highlights = {}
-
-    for model, line in pairs(tracers) do
-        if line then
-            pcall(function() line:Remove() end)
-        end
+    for model, t in pairs(tracers) do
+        if t then pcall(function() t:Remove() end) end
+        tracers[model] = nil
     end
-    tracers = {}
-
-    for model, billboard in pairs(nametags) do
-        if billboard and billboard.Parent then
-            pcall(function() billboard:Destroy() end)
-        end
+    for model, n in pairs(nametags) do
+        if n then pcall(function() n:Destroy() end) end
+        nametags[model] = nil
     end
-    nametags = {}
 end
 
 local function addHighlight(model)
-    if highlights[model] or not settings.HighlightEnabled then return end
-
-    local basePart = model:FindFirstChildWhichIsA("BasePart")
-    if not basePart then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "_ItemESP"
-    highlight.Adornee = model
-    highlight.FillColor = highlightColor
-    highlight.OutlineColor = outlineColor
-    highlight.FillTransparency = 0.8
-    highlight.OutlineTransparency = 0
-    highlight.Parent = model
-
-    highlights[model] = highlight
+    if not highlights[model] and settings.HighlightEnabled then
+        local h = Instance.new("Highlight")
+        h.Name = "_ItemESP"
+        h.FillColor = highlightColor
+        h.OutlineColor = outlineColor
+        h.FillTransparency = 0.8
+        h.OutlineTransparency = 0
+        h.Adornee = model
+        h.Parent = model
+        highlights[model] = h
+    end
 end
 
 local function addTracer(model)
-    if tracers[model] or not settings.TracerEnabled then return end
-
-    local basePart = model:FindFirstChildWhichIsA("BasePart")
-    if not basePart then return end
-
-    -- Проверяем доступность Drawing API
-    if not (Drawing and Drawing.new) then return end
-
-    local line = Drawing.new("Line")
-    line.Thickness = 1.5
-    line.Color = highlightColor
-    line.Visible = false
-
-    tracers[model] = line
+    if not tracers[model] and settings.TracerEnabled then
+        if typeof(Drawing) ~= "table" or typeof(Drawing.new) ~= "function" then return end
+        local line = Drawing.new("Line")
+        line.Thickness = 1.5
+        line.Color = highlightColor
+        line.Visible = false
+        tracers[model] = line
+    end
 end
 
 local function addNameTag(model)
-    if nametags[model] or not settings.NameTagEnabled then return end
+    if not nametags[model] and settings.NameTagEnabled then
+        local part = model:FindFirstChildWhichIsA("BasePart")
+        if not part then return end
 
-    local basePart = model:FindFirstChildWhichIsA("BasePart")
-    if not basePart then return end
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "_ESP_NameTag"
+        billboard.Adornee = part
+        billboard.AlwaysOnTop = true
+        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, -0.5, 0)
+        billboard.Parent = model
 
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "_ESP_NameTag"
-    billboard.Adornee = basePart
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, -0.5, 0)
-    billboard.Parent = model
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = model.Name
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.TextStrokeTransparency = 0.5
+        label.TextScaled = true
+        label.Font = Enum.Font.SourceSansBold
+        label.Parent = billboard
 
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = model.Name
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextStrokeTransparency = 0.5
-    label.TextScaled = true
-    label.Font = Enum.Font.SourceSansBold
-    label.Parent = billboard
-
-    nametags[model] = billboard
+        nametags[model] = billboard
+    end
 end
 
 local function processModel(model)
-    if not model or not model.Parent then return end
-    if not targetNames[model.Name] then return end
-    if not model:IsA("Model") then return end
-    if isIgnored(model) then return end
-
-    addHighlight(model)
-    addTracer(model)
-    addNameTag(model)
+    if targetNames[model.Name] and model:IsA("Model") and not isIgnored(model) then
+        addHighlight(model)
+        addTracer(model)
+        addNameTag(model)
+    end
 end
 
 local function scan()
@@ -179,7 +153,7 @@ local function enable()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
     renderConnection = RunService.RenderStepped:Connect(function(dt)
-        hue = (hue + dt * 0.5) % 1 -- скорость радужного эффекта
+        hue = (hue + dt * (0.5/3)) % 1 -- радужный эффект в 3 раза медленнее
 
         -- Обновляем Highlight цвета
         for model, h in pairs(highlights) do
@@ -201,10 +175,10 @@ local function enable()
                 pcall(function() line:Remove() end)
                 tracers[model] = nil
             else
-                local basePart = model:FindFirstChildWhichIsA("BasePart")
-                if basePart then
-                    local pos, onScreen = Camera:WorldToViewportPoint(basePart.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                local part = model:FindFirstChildWhichIsA("BasePart")
+                if part then
+                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                     line.To = Vector2.new(pos.X, pos.Y)
                     line.Visible = onScreen
                 else
@@ -214,9 +188,9 @@ local function enable()
         end
 
         -- Обновляем NameTags
-        for model, billboard in pairs(nametags) do
+        for model, tag in pairs(nametags) do
             if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
-                pcall(function() billboard:Destroy() end)
+                pcall(function() tag:Destroy() end)
                 nametags[model] = nil
             end
         end
@@ -224,18 +198,9 @@ local function enable()
 end
 
 function disable()
-    if renderConnection then
-        renderConnection:Disconnect()
-        renderConnection = nil
-    end
-
-    for _, conn in pairs(connections) do
-        if conn.Connected then
-            conn:Disconnect()
-        end
-    end
+    if renderConnection then renderConnection:Disconnect() end
+    for _, conn in pairs(connections) do conn:Disconnect() end
     connections = {}
-
     clearESP()
 end
 
@@ -256,7 +221,7 @@ end
 
 function setRainbowHighlight(v)
     settings.RainbowHighlight = v
-    -- Немного обновим цвета сразу при переключении
+    -- Немного обновим цвета сразу
     for model, h in pairs(highlights) do
         if h and h.Parent then
             if settings.RainbowHighlight then
@@ -277,5 +242,5 @@ return {
     SetHighlight = setHighlight,
     SetTracer = setTracer,
     SetNameTag = setNameTag,
-    SetRainbowHighlight = setRainbowHighlight,
+    SetRainbowHighlight = setRainbowHighlight
 }
