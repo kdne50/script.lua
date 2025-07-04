@@ -153,9 +153,9 @@ local function enable()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
     renderConnection = RunService.RenderStepped:Connect(function(dt)
-        hue = (hue + dt * (0.5/6)) % 1  -- радужный эффект замедлен в 6 раз
+        -- Радуга замедлена в 12 раз (0.5/12), тк ты просил в 2 раза медленнее, чем 0.5/6
+        hue = (hue + dt * (0.5/12)) % 1
 
-        -- Обновляем Highlight цвета
         for model, h in pairs(highlights) do
             if h and h.Parent then
                 if settings.RainbowHighlight then
@@ -169,7 +169,7 @@ local function enable()
             end
         end
 
-        -- Отсюда взят твой оригинальный tracer код (без изменений), только убрал From.Y на центр экрана
+        -- Твой tracer из присланного тобой кода, с From внизу экрана
         for model, line in pairs(tracers) do
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
@@ -178,7 +178,7 @@ local function enable()
                 local part = model:FindFirstChildWhichIsA("BasePart")
                 if part then
                     local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) -- центр экрана
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     line.To = Vector2.new(pos.X, pos.Y)
                     line.Visible = onScreen
                 else
@@ -187,7 +187,6 @@ local function enable()
             end
         end
 
-        -- Обновляем NameTags
         for model, tag in pairs(nametags) do
             if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
                 pcall(function() tag:Destroy() end)
@@ -221,7 +220,7 @@ end
 
 function setRainbowHighlight(v)
     settings.RainbowHighlight = v
-    -- Можно сразу обновить цвета, если нужно
+    -- Обновить цвета сразу
     for model, h in pairs(highlights) do
         if h and h.Parent then
             if settings.RainbowHighlight then
