@@ -11,7 +11,7 @@ local targetNames = {
     ["Vitamins"] = true, ["Smoothie"] = true, ["AlarmClock"] = true,
     ["Bandage"] = true, ["Candle"] = true, ["LibraryHintPaper"] = true,
     ["SkeletonKey"] = true, ["Flashlight"] = true, ["RiftSmoothie"] = true,
-    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true,
+    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true, ["CrucifixWall"] = true,
     ["Straplight"] = true, ["Glowsticks"] = true, ["BatteryPack"] = true,
     ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true, ["Starlight Bottle"] = true,
     ["Starlight Jug"] = true, ["Shakelight"] = true, ["Gween Soda"] = true,
