@@ -3,6 +3,7 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
 local targetNames = {
     ["LiveHintBook"] = true, ["KeyObtain"] = true, ["LiveBreakerPolePickup"] = true,
     ["SmoothieSpawner"] = true, ["Shears"] = true, ["Lighter"] = true,
@@ -27,7 +28,6 @@ local settings = {
     TracerEnabled = true,
     NameTagEnabled = false,
 
-    -- 🔤 Текстовые настройки:
     TextSize = 20,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
@@ -42,18 +42,10 @@ local function isIgnored(model)
 end
 
 local function clearESP()
-    for model, h in pairs(highlights) do
-        if h then pcall(function() h:Destroy() end) end
-        highlights[model] = nil
-    end
-    for model, t in pairs(tracers) do
-        if t then pcall(function() t:Remove() end) end
-        tracers[model] = nil
-    end
-    for model, n in pairs(nametags) do
-        if n then pcall(function() n:Destroy() end) end
-        nametags[model] = nil
-    end
+    for model, h in pairs(highlights) do if h then pcall(function() h:Destroy() end) end end
+    for model, t in pairs(tracers) do if t then pcall(function() t:Remove() end) end end
+    for model, n in pairs(nametags) do if n then pcall(function() n:Destroy() end) end end
+    highlights, tracers, nametags = {}, {}, {}
 end
 
 local function addHighlight(model)
@@ -97,7 +89,6 @@ local function addNameTag(model)
         label.Size = UDim2.new(1, 0, 1, 0)
         label.BackgroundTransparency = 1
 
-        -- 🧠 Расстояние (если включено)
         local distanceText = ""
         if settings.ShowDistance then
             local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -148,32 +139,32 @@ local function enable()
     scan()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
-renderConnection = RunService.RenderStepped:Connect(function()
-    for model, line in pairs(tracers) do
-        if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
-            pcall(function() line:Remove() end)
-            tracers[model] = nil
-            continue
+    renderConnection = RunService.RenderStepped:Connect(function()
+        for model, line in pairs(tracers) do
+            if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
+                pcall(function() line:Remove() end)
+                tracers[model] = nil
+                continue
+            end
+            local part = model:FindFirstChildWhichIsA("BasePart")
+            if part then
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                line.To = Vector2.new(pos.X, pos.Y)
+                line.Visible = onScreen
+            else
+                line.Visible = false
+            end
         end
 
-        local part = model:FindFirstChildWhichIsA("BasePart")
-        if part then
-            local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-            line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-            line.To = Vector2.new(pos.X, pos.Y)
-            line.Visible = onScreen
-        else
-            line.Visible = false
+        for model, tag in pairs(nametags) do
+            if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
+                pcall(function() tag:Destroy() end)
+                nametags[model] = nil
+            end
         end
-    end
-
-    for model, tag in pairs(nametags) do
-        if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
-            pcall(function() tag:Destroy() end)
-            nametags[model] = nil
-        end
-    end
-end)
+    end)
+end
 
 function disable()
     if renderConnection then renderConnection:Disconnect() end
@@ -200,8 +191,6 @@ return {
     SetHighlight = setHighlight,
     SetTracer = setTracer,
     SetNameTag = setNameTag,
-
-    -- 📦 Текстовые настройки
     SetFont = setFont,
     SetTextSize = setTextSize,
     SetTextTransparency = setTextTransparency,
