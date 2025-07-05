@@ -3,7 +3,6 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
-
 local targetNames = {
     ["LiveHintBook"] = true, ["KeyObtain"] = true, ["LiveBreakerPolePickup"] = true,
     ["SmoothieSpawner"] = true, ["Shears"] = true, ["Lighter"] = true,
@@ -149,31 +148,32 @@ local function enable()
     scan()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
-    renderConnection = RunService.RenderStepped:Connect(function()
-        for model, line in pairs(tracers) do
-            if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
-                pcall(function() line:Remove() end)
-                tracers[model] = nil
-            else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    line.To = Vector2.new(pos.X, pos.Y)
-                    line.Visible = onScreen
-                else
-                    line.Visible = false
-                end
-            end
+renderConnection = RunService.RenderStepped:Connect(function()
+    for model, line in pairs(tracers) do
+        if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
+            pcall(function() line:Remove() end)
+            tracers[model] = nil
+            continue
         end
-        for model, tag in pairs(nametags) do
-            if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
-                pcall(function() tag:Destroy() end)
-                nametags[model] = nil
-            end
+
+        local part = model:FindFirstChildWhichIsA("BasePart")
+        if part then
+            local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            line.To = Vector2.new(pos.X, pos.Y)
+            line.Visible = onScreen
+        else
+            line.Visible = false
         end
-    end)
-end
+    end
+
+    for model, tag in pairs(nametags) do
+        if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
+            pcall(function() tag:Destroy() end)
+            nametags[model] = nil
+        end
+    end
+end)
 
 function disable()
     if renderConnection then renderConnection:Disconnect() end
