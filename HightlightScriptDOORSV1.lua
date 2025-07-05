@@ -26,7 +26,16 @@ local connections, renderConnection = {}, nil
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
-    NameTagEnabled = false
+    NameTagEnabled = false,
+
+    -- 🔤 Текстовые настройки:
+    TextSize = 20,
+    Font = Enum.Font.Oswald,
+    TextTransparency = 0,
+    TextOutlineTransparency = 0.5,
+    ShowDistance = false,
+    DistanceSizeRatio = 1.0,
+    MatchColors = true
 }
 
 local function isIgnored(model)
@@ -88,11 +97,26 @@ local function addNameTag(model)
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, 0, 1, 0)
         label.BackgroundTransparency = 1
-        label.Text = model.Name
-        label.TextColor3 = Color3.new(1, 1, 1)
-        label.TextStrokeTransparency = 0.5
-        label.TextScaled = true
-        label.Font = Enum.Font.SourceSansBold
+
+        -- 🧠 Расстояние (если включено)
+        local distanceText = ""
+        if settings.ShowDistance then
+            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local distance = (root.Position - part.Position).Magnitude
+                local size = math.round(settings.TextSize * settings.DistanceSizeRatio)
+                distanceText = string.format(' <font size="%d">[%d]</font>', size, distance)
+            end
+        end
+
+        label.Text = settings.ShowDistance and (model.Name .. distanceText) or model.Name
+        label.TextColor3 = settings.MatchColors and highlightColor or Color3.new(1, 1, 1)
+        label.TextStrokeTransparency = settings.TextOutlineTransparency
+        label.TextTransparency = settings.TextTransparency
+        label.Font = settings.Font
+        label.TextSize = settings.TextSize
+        label.RichText = true
+        label.TextScaled = false
         label.Parent = billboard
 
         nametags[model] = billboard
@@ -158,25 +182,31 @@ function disable()
     clearESP()
 end
 
-function setHighlight(v)
-    settings.HighlightEnabled = v
-    scan()
-end
-
-function setTracer(v)
-    settings.TracerEnabled = v
-    scan()
-end
-
-function setNameTag(v)
-    settings.NameTagEnabled = v
-    scan()
-end
+-- 🔧 Методы настройки
+function setHighlight(v) settings.HighlightEnabled = v scan() end
+function setTracer(v) settings.TracerEnabled = v scan() end
+function setNameTag(v) settings.NameTagEnabled = v scan() end
+function setFont(font) settings.Font = font scan() end
+function setTextSize(size) settings.TextSize = size scan() end
+function setTextTransparency(val) settings.TextTransparency = val scan() end
+function setTextOutlineTransparency(val) settings.TextOutlineTransparency = val scan() end
+function setShowDistance(val) settings.ShowDistance = val scan() end
+function setMatchColors(val) settings.MatchColors = val scan() end
+function setDistanceSizeRatio(val) settings.DistanceSizeRatio = val scan() end
 
 return {
     EnableESP = enable,
     DisableESP = disable,
     SetHighlight = setHighlight,
     SetTracer = setTracer,
-    SetNameTag = setNameTag
+    SetNameTag = setNameTag,
+
+    -- 📦 Текстовые настройки
+    SetFont = setFont,
+    SetTextSize = setTextSize,
+    SetTextTransparency = setTextTransparency,
+    SetTextOutlineTransparency = setTextOutlineTransparency,
+    SetShowDistance = setShowDistance,
+    SetMatchColors = setMatchColors,
+    SetDistanceSizeRatio = setDistanceSizeRatio
 }
