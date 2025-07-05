@@ -23,6 +23,7 @@ local outlineColor = Color3.fromRGB(255, 255, 255)
 
 local highlights, tracers, nametags = {}, {}, {}
 local connections, renderConnection = {}, nil
+
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
@@ -88,18 +89,6 @@ local function addNameTag(model)
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, 0, 1, 0)
         label.BackgroundTransparency = 1
-
-        local distanceText = ""
-        if settings.ShowDistance then
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                local distance = (root.Position - part.Position).Magnitude
-                local size = math.round(settings.TextSize * settings.DistanceSizeRatio)
-                distanceText = string.format(' <font size="%d">[%d]</font>', size, distance)
-            end
-        end
-
-        label.Text = settings.ShowDistance and (model.Name .. distanceText) or model.Name
         label.TextColor3 = settings.MatchColors and highlightColor or Color3.new(1, 1, 1)
         label.TextStrokeTransparency = settings.TextOutlineTransparency
         label.TextTransparency = settings.TextTransparency
@@ -108,6 +97,9 @@ local function addNameTag(model)
         label.RichText = true
         label.TextScaled = false
         label.Parent = billboard
+
+        -- Изначально просто имя (дистанция обновится в рендере)
+        label.Text = model.Name
 
         nametags[model] = billboard
     end
@@ -139,21 +131,38 @@ local function enable()
     scan()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
+    -- Дополнительный слушатель для удаления из таблиц
+    table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
+        if highlights[obj] then
+            pcall(function() highlights[obj]:Destroy() end)
+            highlights[obj] = nil
+        end
+        if tracers[obj] then
+            pcall(function() tracers[obj]:Remove() end)
+            tracers[obj] = nil
+        end
+        if nametags[obj] then
+            pcall(function() nametags[obj]:Destroy() end)
+            nametags[obj] = nil
+        end
+    end))
+
     renderConnection = RunService.RenderStepped:Connect(function()
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         for model, line in pairs(tracers) do
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
                 tracers[model] = nil
-                continue
-            end
-            local part = model:FindFirstChildWhichIsA("BasePart")
-            if part then
-                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                line.To = Vector2.new(pos.X, pos.Y)
-                line.Visible = onScreen
             else
-                line.Visible = false
+                local part = model:FindFirstChildWhichIsA("BasePart")
+                if part then
+                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.Visible = onScreen
+                else
+                    line.Visible = false
+                end
             end
         end
 
@@ -161,6 +170,21 @@ local function enable()
             if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
                 pcall(function() tag:Destroy() end)
                 nametags[model] = nil
+            else
+                local part = model:FindFirstChildWhichIsA("BasePart")
+                if part and root and settings.ShowDistance then
+                    local distance = math.floor((root.Position - part.Position).Magnitude)
+                    local size = math.round(settings.TextSize * settings.DistanceSizeRatio)
+                    local label = tag:FindFirstChildOfClass("TextLabel")
+                    if label then
+                        label.Text = string.format('%s <font size="%d">[%d]</font>', model.Name, size, distance)
+                    end
+                else
+                    local label = tag:FindFirstChildOfClass("TextLabel")
+                    if label then
+                        label.Text = model.Name
+                    end
+                end
             end
         end
     end)
@@ -173,7 +197,7 @@ function disable()
     clearESP()
 end
 
--- 🔧 Методы настройки
+-- Методы настройки
 function setHighlight(v) settings.HighlightEnabled = v scan() end
 function setTracer(v) settings.TracerEnabled = v scan() end
 function setNameTag(v) settings.NameTagEnabled = v scan() end
