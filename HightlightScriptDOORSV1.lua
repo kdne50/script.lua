@@ -38,8 +38,21 @@ local settings = {
     MatchColors = true
 }
 
+-- Проверка: лежит ли предмет в руках или рюкзаке любого игрока (в Workspace)
+local function isHeldByPlayer(model)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            if model:IsDescendantOf(player.Character) then return true end
+        end
+        if player:FindFirstChild("Backpack") then
+            if model:IsDescendantOf(player.Backpack) then return true end
+        end
+    end
+    return false
+end
+
 local function isIgnored(model)
-    return model:IsDescendantOf(LocalPlayer.Backpack) or model:IsDescendantOf(LocalPlayer.Character)
+    return model:IsDescendantOf(LocalPlayer.Backpack) or model:IsDescendantOf(LocalPlayer.Character) or isHeldByPlayer(model)
 end
 
 local function clearESP()
@@ -93,12 +106,11 @@ local function addNameTag(model)
         label.TextStrokeTransparency = settings.TextOutlineTransparency
         label.TextTransparency = settings.TextTransparency
         label.Font = settings.Font
-        label.TextSize = settings.TextSize
+        label.TextSize = math.floor(settings.TextSize * 1.2) -- Увеличение размера на 1.2 раза
         label.RichText = true
         label.TextScaled = false
         label.Parent = billboard
 
-        -- Изначально просто имя (дистанция обновится в рендере)
         label.Text = model.Name
 
         nametags[model] = billboard
@@ -131,7 +143,6 @@ local function enable()
     scan()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
-    -- Дополнительный слушатель для удаления из таблиц
     table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
         if highlights[obj] then
             pcall(function() highlights[obj]:Destroy() end)
