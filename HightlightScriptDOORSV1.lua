@@ -38,14 +38,13 @@ local settings = {
     MatchColors = true
 }
 
--- Проверка: лежит ли предмет в руках или рюкзаке любого игрока (в Workspace)
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
-        if player.Character then
-            if model:IsDescendantOf(player.Character) then return true end
+        if player.Character and model:IsDescendantOf(player.Character) then
+            return true
         end
-        if player:FindFirstChild("Backpack") then
-            if model:IsDescendantOf(player.Backpack) then return true end
+        if player:FindFirstChild("Backpack") and model:IsDescendantOf(player.Backpack) then
+            return true
         end
     end
     return false
@@ -106,7 +105,7 @@ local function addNameTag(model)
         label.TextStrokeTransparency = settings.TextOutlineTransparency
         label.TextTransparency = settings.TextTransparency
         label.Font = settings.Font
-        label.TextSize = math.floor(settings.TextSize * 1.2) -- Увеличение размера на 1.2 раза
+        label.TextSize = math.floor(settings.TextSize * 1.2)
         label.RichText = true
         label.TextScaled = false
         label.Parent = billboard
@@ -142,7 +141,6 @@ local function enable()
     disable()
     scan()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
-
     table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
         if highlights[obj] then
             pcall(function() highlights[obj]:Destroy() end)
@@ -158,8 +156,17 @@ local function enable()
         end
     end))
 
+    -- Для масштабирования текста по FOV
+    local baseFOV = Camera.FieldOfView
+
     renderConnection = RunService.RenderStepped:Connect(function()
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+        -- Масштаб текста от FOV (чем меньше FOV, тем крупнее текст)
+        local fovScale = baseFOV / Camera.FieldOfView
+        if fovScale < 0.5 then fovScale = 0.5 end
+        if fovScale > 2 then fovScale = 2 end
+
         for model, line in pairs(tracers) do
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
@@ -183,17 +190,22 @@ local function enable()
                 nametags[model] = nil
             else
                 local part = model:FindFirstChildWhichIsA("BasePart")
-                if part and root and settings.ShowDistance then
-                    local distance = math.floor((root.Position - part.Position).Magnitude)
-                    local size = math.round(settings.TextSize * settings.DistanceSizeRatio)
+                if part and root then
                     local label = tag:FindFirstChildOfClass("TextLabel")
                     if label then
-                        label.Text = string.format('%s <font size="%d">[%d]</font>', model.Name, size, distance)
-                    end
-                else
-                    local label = tag:FindFirstChildOfClass("TextLabel")
-                    if label then
-                        label.Text = model.Name
+                        -- Масштабируем TextSize для NameTag
+                        label.TextSize = math.floor(settings.TextSize * 1.2 * fovScale)
+                        label.TextColor3 = settings.MatchColors and highlightColor or Color3.new(1, 1, 1)
+                        label.TextTransparency = settings.TextTransparency
+                        label.TextStrokeTransparency = settings.TextOutlineTransparency
+
+                        if settings.ShowDistance then
+                            local distance = math.floor((root.Position - part.Position).Magnitude)
+                            local size = math.round(settings.TextSize * settings.DistanceSizeRatio * fovScale)
+                            label.Text = string.format('%s <font size="%d">[%d]</font>', model.Name, size, distance)
+                        else
+                            label.Text = model.Name
+                        end
                     end
                 end
             end
