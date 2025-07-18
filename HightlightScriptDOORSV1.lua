@@ -29,7 +29,7 @@ local settings = {
     TracerEnabled = true,
     NameTagEnabled = false,
 
-    TextSize = 20,
+    TextSize = 20, -- не используется теперь
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
@@ -42,12 +42,8 @@ local baseFOV = Camera.FieldOfView
 
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
-        if player.Character then
-            if model:IsDescendantOf(player.Character) then return true end
-        end
-        if player:FindFirstChild("Backpack") then
-            if model:IsDescendantOf(player.Backpack) then return true end
-        end
+        if player.Character and model:IsDescendantOf(player.Character) then return true end
+        if player:FindFirstChild("Backpack") and model:IsDescendantOf(player.Backpack) then return true end
     end
     return false
 end
@@ -107,11 +103,10 @@ local function addNameTag(model)
         label.TextStrokeTransparency = settings.TextOutlineTransparency
         label.TextTransparency = settings.TextTransparency
         label.Font = settings.Font
-        label.TextSize = math.floor(settings.TextSize * 1.2 * (Camera.FieldOfView / baseFOV))
+        label.TextSize = 24
         label.RichText = true
         label.TextScaled = false
         label.Parent = billboard
-
         label.Text = model.Name
 
         nametags[model] = billboard
@@ -145,18 +140,9 @@ local function enable()
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
     table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
-        if highlights[obj] then
-            pcall(function() highlights[obj]:Destroy() end)
-            highlights[obj] = nil
-        end
-        if tracers[obj] then
-            pcall(function() tracers[obj]:Remove() end)
-            tracers[obj] = nil
-        end
-        if nametags[obj] then
-            pcall(function() nametags[obj]:Destroy() end)
-            nametags[obj] = nil
-        end
+        if highlights[obj] then pcall(function() highlights[obj]:Destroy() end) highlights[obj] = nil end
+        if tracers[obj] then pcall(function() tracers[obj]:Remove() end) tracers[obj] = nil end
+        if nametags[obj] then pcall(function() nametags[obj]:Destroy() end) nametags[obj] = nil end
     end))
 
     renderConnection = RunService.RenderStepped:Connect(function()
@@ -184,20 +170,15 @@ local function enable()
                 nametags[model] = nil
             else
                 local part = model:FindFirstChildWhichIsA("BasePart")
-                if part and root and settings.ShowDistance then
-                    local distance = math.floor((root.Position - part.Position).Magnitude)
-                    local size = math.round(settings.TextSize * settings.DistanceSizeRatio * (Camera.FieldOfView / baseFOV))
-                    local label = tag:FindFirstChildOfClass("TextLabel")
-                    if label then
-                        label.Text = string.format('%s <font size="%d">[%d]</font>', model.Name, size, distance)
-                        label.TextSize = size
-                    end
-                else
-                    local label = tag:FindFirstChildOfClass("TextLabel")
-                    if label then
+                local label = tag:FindFirstChildOfClass("TextLabel")
+                if part and label then
+                    if root and settings.ShowDistance then
+                        local distance = math.floor((root.Position - part.Position).Magnitude)
+                        label.Text = string.format("%s [%d]", model.Name, distance)
+                    else
                         label.Text = model.Name
-                        label.TextSize = math.floor(settings.TextSize * 1.2 * (Camera.FieldOfView / baseFOV))
                     end
+                    label.TextSize = 24
                 end
             end
         end
@@ -211,7 +192,6 @@ function disable()
     clearESP()
 end
 
--- Методы настройки
 function setHighlight(v) settings.HighlightEnabled = v scan() end
 function setTracer(v) settings.TracerEnabled = v scan() end
 function setNameTag(v) settings.NameTagEnabled = v scan() end
