@@ -29,7 +29,7 @@ local settings = {
     TracerEnabled = true,
     NameTagEnabled = false,
 
-    TextSize = 20, -- не используется теперь
+    TextSize = 20, -- не используется теперь напрямую
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
@@ -39,6 +39,8 @@ local settings = {
 }
 
 local baseFOV = Camera.FieldOfView
+local baseTextSize = 24 -- базовый размер текста при базовом FOV
+local baseBillboardSize = UDim2.new(0, 200, 0, 50) -- базовый размер BillboardGui
 
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
@@ -92,7 +94,7 @@ local function addNameTag(model)
         billboard.Name = "_ESP_NameTag"
         billboard.Adornee = part
         billboard.AlwaysOnTop = true
-        billboard.Size = UDim2.new(0, 200, 0, 50)
+        billboard.Size = baseBillboardSize
         billboard.StudsOffset = Vector3.new(0, -0.5, 0)
         billboard.Parent = model
 
@@ -103,7 +105,7 @@ local function addNameTag(model)
         label.TextStrokeTransparency = settings.TextOutlineTransparency
         label.TextTransparency = settings.TextTransparency
         label.Font = settings.Font
-        label.TextSize = 24
+        label.TextSize = baseTextSize
         label.RichText = true
         label.TextScaled = false
         label.Parent = billboard
@@ -147,6 +149,9 @@ local function enable()
 
     renderConnection = RunService.RenderStepped:Connect(function()
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local currentFOV = Camera.FieldOfView
+        local fovRatio = currentFOV / baseFOV
+
         for model, line in pairs(tracers) do
             if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
@@ -178,7 +183,13 @@ local function enable()
                     else
                         label.Text = model.Name
                     end
-                    label.TextSize = 24
+                    local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
+                    label.TextSize = newTextSize
+
+                    -- Масштабируем BillboardGui пропорционально тексту
+                    local scaleFactor = newTextSize / baseTextSize
+                    tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
+                                         baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
                 end
             end
         end
