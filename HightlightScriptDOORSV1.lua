@@ -38,6 +38,8 @@ local settings = {
     MatchColors = true
 }
 
+local baseFOV = Camera.FieldOfView
+
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
         if player.Character and model:IsDescendantOf(player.Character) then return true end
@@ -91,7 +93,7 @@ local function addNameTag(model)
         billboard.Adornee = part
         billboard.AlwaysOnTop = true
         billboard.Size = UDim2.new(0, 200, 0, 50)
-        billboard.StudsOffset = Vector3.new(0, 2.5, 0) -- поднято над объектом
+        billboard.StudsOffset = Vector3.new(0, -0.5, 0)
         billboard.Parent = model
 
         local label = Instance.new("TextLabel")
@@ -103,7 +105,7 @@ local function addNameTag(model)
         label.Font = settings.Font
         label.TextSize = 24
         label.RichText = true
-        label.TextScaled = false -- отключаем авто масштабирование
+        label.TextScaled = false
         label.Parent = billboard
         label.Text = model.Name
 
