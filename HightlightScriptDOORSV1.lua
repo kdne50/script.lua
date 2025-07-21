@@ -1,3 +1,4 @@
+-- Обновлённая ESP-библиотека
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
@@ -18,18 +19,29 @@ local targetNames = {
     ["Bread"] = true, ["Cheese"] = true
 }
 
+local entityTargets = {
+    A120 = "Main",
+    A60 = "Main",
+    RushMoving = "RushNew",
+    AmbushMoving = "RushNew",
+    Eyes = "Core",
+    BackdoorRush = "Main",
+    BackdoorLookman = "Core",
+}
+
 local highlightColor = Color3.fromRGB(0, 255, 255)
 local outlineColor = Color3.fromRGB(255, 255, 255)
 
-local highlights, tracers, nametags = {}, {}, {}
+local highlights, tracers, nametags, adornments = {}, {}, {}, {}
 local connections, renderConnection = {}, nil
 
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
     NameTagEnabled = false,
+    EntityESPEnabled = false,
 
-    TextSize = 20, -- не используется теперь напрямую
+    TextSize = 20,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
@@ -39,8 +51,8 @@ local settings = {
 }
 
 local baseFOV = Camera.FieldOfView
-local baseTextSize = 24 -- базовый размер текста при базовом FOV
-local baseBillboardSize = UDim2.new(0, 200, 0, 50) -- базовый размер BillboardGui
+local baseTextSize = 24
+local baseBillboardSize = UDim2.new(0, 200, 0, 50)
 
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
@@ -55,10 +67,11 @@ local function isIgnored(model)
 end
 
 local function clearESP()
-    for model, h in pairs(highlights) do if h then pcall(function() h:Destroy() end) end end
-    for model, t in pairs(tracers) do if t then pcall(function() t:Remove() end) end end
-    for model, n in pairs(nametags) do if n then pcall(function() n:Destroy() end) end end
-    highlights, tracers, nametags = {}, {}, {}
+    for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
+    for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
+    for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
+    for _, a in pairs(adornments) do pcall(function() a:Destroy() end) end
+    highlights, tracers, nametags, adornments = {}, {}, {}, {}
 end
 
 local function addHighlight(model)
@@ -115,11 +128,36 @@ local function addNameTag(model)
     end
 end
 
+local function addEntityAdornment(model)
+    if not settings.EntityESPEnabled then return end
+    local partName = entityTargets[model.Name]
+    if not partName then return end
+
+    local part = model:FindFirstChild(partName)
+    if part and not adornments[model] then
+        local adorn = Instance.new("SphereHandleAdornment")
+        adorn.Adornee = part
+        adorn.Color3 = highlightColor
+        adorn.Transparency = 0.5
+        adorn.Radius = 4
+        adorn.AlwaysOnTop = true
+        adorn.ZIndex = 10
+        adorn.AdornCullingMode = Enum.AdornCullingMode.AlwaysOn
+        adorn.Parent = Workspace
+        adornments[model] = adorn
+    end
+end
+
 local function processModel(model)
-    if targetNames[model.Name] and model:IsA("Model") and not isIgnored(model) then
-        addHighlight(model)
-        addTracer(model)
-        addNameTag(model)
+    if model:IsA("Model") then
+        if targetNames[model.Name] and not isIgnored(model) then
+            addHighlight(model)
+            addTracer(model)
+            addNameTag(model)
+        end
+        if entityTargets[model.Name] then
+            addEntityAdornment(model)
+        end
     end
 end
 
@@ -136,95 +174,74 @@ local function onNewChild(obj)
     end)
 end
 
-local function enable()
-    disable()
-    scan()
-    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
-
-    table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
-        if highlights[obj] then pcall(function() highlights[obj]:Destroy() end) highlights[obj] = nil end
-        if tracers[obj] then pcall(function() tracers[obj]:Remove() end) tracers[obj] = nil end
-        if nametags[obj] then pcall(function() nametags[obj]:Destroy() end) nametags[obj] = nil end
-    end))
-
+local function startRender()
+    if renderConnection then renderConnection:Disconnect() end
     renderConnection = RunService.RenderStepped:Connect(function()
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
         local currentFOV = Camera.FieldOfView
         local fovRatio = currentFOV / baseFOV
 
         for model, line in pairs(tracers) do
-            if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
+            local part = model:FindFirstChildWhichIsA("BasePart")
+            if not part or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
                 tracers[model] = nil
             else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    line.To = Vector2.new(pos.X, pos.Y)
-                    line.Visible = onScreen
-                else
-                    line.Visible = false
-                end
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                line.To = Vector2.new(pos.X, pos.Y)
+                line.Visible = onScreen
             end
         end
 
         for model, tag in pairs(nametags) do
-            if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
+            local part = model:FindFirstChildWhichIsA("BasePart")
+            local label = tag:FindFirstChildOfClass("TextLabel")
+            if not part or not label or not settings.NameTagEnabled or isIgnored(model) then
                 pcall(function() tag:Destroy() end)
                 nametags[model] = nil
             else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                local label = tag:FindFirstChildOfClass("TextLabel")
-                if part and label then
-                    if root and settings.ShowDistance then
-                        local distance = math.floor((root.Position - part.Position).Magnitude)
-                        label.Text = string.format("%s [%d]", model.Name, distance)
-                    else
-                        label.Text = model.Name
-                    end
-                    local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
-                    label.TextSize = newTextSize
-
-                    -- Масштабируем BillboardGui пропорционально тексту
-                    local scaleFactor = newTextSize / baseTextSize
-                    tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
-                                         baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
+                if settings.ShowDistance then
+                    local distance = math.floor((root.Position - part.Position).Magnitude)
+                    label.Text = string.format("%s [%d]", model.Name, distance)
+                else
+                    label.Text = model.Name
                 end
+                local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
+                label.TextSize = newTextSize
+
+                local scaleFactor = newTextSize / baseTextSize
+                tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
+                                     baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
             end
         end
     end)
 end
 
-function disable()
-    if renderConnection then renderConnection:Disconnect() end
-    for _, conn in pairs(connections) do conn:Disconnect() end
-    connections = {}
-    clearESP()
-end
+-- Автозапуск + подписки
+scan()
+table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
+table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
+    if highlights[obj] then pcall(function() highlights[obj]:Destroy() end) highlights[obj] = nil end
+    if tracers[obj] then pcall(function() tracers[obj]:Remove() end) tracers[obj] = nil end
+    if nametags[obj] then pcall(function() nametags[obj]:Destroy() end) nametags[obj] = nil end
+    if adornments[obj] then pcall(function() adornments[obj]:Destroy() end) adornments[obj] = nil end
+end))
+startRender()
 
-function setHighlight(v) settings.HighlightEnabled = v scan() end
-function setTracer(v) settings.TracerEnabled = v scan() end
-function setNameTag(v) settings.NameTagEnabled = v scan() end
-function setFont(font) settings.Font = font scan() end
-function setTextSize(size) settings.TextSize = size scan() end
-function setTextTransparency(val) settings.TextTransparency = val scan() end
-function setTextOutlineTransparency(val) settings.TextOutlineTransparency = val scan() end
-function setShowDistance(val) settings.ShowDistance = val scan() end
-function setMatchColors(val) settings.MatchColors = val scan() end
-function setDistanceSizeRatio(val) settings.DistanceSizeRatio = val scan() end
-
+-- Интерфейс управления
 return {
-    EnableESP = enable,
-    DisableESP = disable,
-    SetHighlight = setHighlight,
-    SetTracer = setTracer,
-    SetNameTag = setNameTag,
-    SetFont = setFont,
-    SetTextSize = setTextSize,
-    SetTextTransparency = setTextTransparency,
-    SetTextOutlineTransparency = setTextOutlineTransparency,
-    SetShowDistance = setShowDistance,
-    SetMatchColors = setMatchColors,
-    SetDistanceSizeRatio = setDistanceSizeRatio
+    SetHighlight = function(v) settings.HighlightEnabled = v scan() end,
+    SetTracer = function(v) settings.TracerEnabled = v scan() end,
+    SetNameTag = function(v) settings.NameTagEnabled = v scan() end,
+    SetEntityESP = function(v) settings.EntityESPEnabled = v scan() end,
+    SetFont = function(v) settings.Font = v scan() end,
+    SetTextSize = function(v) settings.TextSize = v scan() end,
+    SetTextTransparency = function(v) settings.TextTransparency = v scan() end,
+    SetTextOutlineTransparency = function(v) settings.TextOutlineTransparency = v scan() end,
+    SetShowDistance = function(v) settings.ShowDistance = v scan() end,
+    SetMatchColors = function(v) settings.MatchColors = v scan() end,
+    SetDistanceSizeRatio = function(v) settings.DistanceSizeRatio = v scan() end,
 }
