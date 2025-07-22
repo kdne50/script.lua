@@ -15,7 +15,7 @@ local targetNames = {
     ["Straplight"] = true, ["Glowsticks"] = true, ["BatteryPack"] = true,
     ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true, ["Starlight Bottle"] = true,
     ["Starlight Jug"] = true, ["Shakelight"] = true, ["Gween Soda"] = true,
-    ["Bread"] = true, ["Cheese"] = true
+    ["Bread"] = true, ["Cheese"] = true, ["StarVial"] = true, ["StarBottle"] = true, ["TimerLever"] = true,
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
