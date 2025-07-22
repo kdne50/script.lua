@@ -29,7 +29,7 @@ local settings = {
     TracerEnabled = true,
     NameTagEnabled = false,
 
-    TextSize = 20, -- не используется теперь напрямую
+    TextSize = 20,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
@@ -39,8 +39,8 @@ local settings = {
 }
 
 local baseFOV = Camera.FieldOfView
-local baseTextSize = 24 -- базовый размер текста при базовом FOV
-local baseBillboardSize = UDim2.new(0, 200, 0, 50) -- базовый размер BillboardGui
+local baseTextSize = 24
+local baseBillboardSize = UDim2.new(0, 200, 0, 50)
 
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
@@ -55,9 +55,9 @@ local function isIgnored(model)
 end
 
 local function clearESP()
-    for model, h in pairs(highlights) do if h then pcall(function() h:Destroy() end) end end
-    for model, t in pairs(tracers) do if t then pcall(function() t:Remove() end) end end
-    for model, n in pairs(nametags) do if n then pcall(function() n:Destroy() end) end end
+    for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
+    for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
+    for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
     highlights, tracers, nametags = {}, {}, {}
 end
 
@@ -139,16 +139,23 @@ end
 local function enable()
     disable()
     scan()
-    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
 
+    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
     table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
         if highlights[obj] then pcall(function() highlights[obj]:Destroy() end) highlights[obj] = nil end
         if tracers[obj] then pcall(function() tracers[obj]:Remove() end) tracers[obj] = nil end
         if nametags[obj] then pcall(function() nametags[obj]:Destroy() end) nametags[obj] = nil end
     end))
 
+    -- Автоматический перескан при респавне персонажа
+    table.insert(connections, LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1)
+        scan()
+    end))
+
     renderConnection = RunService.RenderStepped:Connect(function()
-        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
         local currentFOV = Camera.FieldOfView
         local fovRatio = currentFOV / baseFOV
 
@@ -158,7 +165,7 @@ local function enable()
                 tracers[model] = nil
             else
                 local part = model:FindFirstChildWhichIsA("BasePart")
-                if part then
+                if part and root then
                     local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
                     line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     line.To = Vector2.new(pos.X, pos.Y)
@@ -186,7 +193,6 @@ local function enable()
                     local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
                     label.TextSize = newTextSize
 
-                    -- Масштабируем BillboardGui пропорционально тексту
                     local scaleFactor = newTextSize / baseTextSize
                     tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
                                          baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
