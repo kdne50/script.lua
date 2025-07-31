@@ -1,3 +1,5 @@
+--// ✅ Улучшенный Item ESP с корректным удалением и повторной инициализацией после смерти
+
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
@@ -61,6 +63,12 @@ local function clearESP()
     highlights, tracers, nametags = {}, {}, {}
 end
 
+local function removeModelRefs(model)
+    if highlights[model] then pcall(function() highlights[model]:Destroy() end) highlights[model] = nil end
+    if tracers[model] then pcall(function() tracers[model]:Remove() end) tracers[model] = nil end
+    if nametags[model] then pcall(function() nametags[model]:Destroy() end) nametags[model] = nil end
+end
+
 local function addHighlight(model)
     if not highlights[model] and settings.HighlightEnabled then
         local h = Instance.new("Highlight")
@@ -116,10 +124,12 @@ local function addNameTag(model)
 end
 
 local function processModel(model)
-    if targetNames[model.Name] and model:IsA("Model") and not isIgnored(model) then
+    if targetNames[model.Name] and model:IsA("Model") and model:IsDescendantOf(Workspace) and not isIgnored(model) then
         addHighlight(model)
         addTracer(model)
         addNameTag(model)
+    else
+        removeModelRefs(model)
     end
 end
 
@@ -141,13 +151,8 @@ local function enable()
     scan()
 
     table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
-    table.insert(connections, Workspace.DescendantRemoving:Connect(function(obj)
-        if highlights[obj] then pcall(function() highlights[obj]:Destroy() end) highlights[obj] = nil end
-        if tracers[obj] then pcall(function() tracers[obj]:Remove() end) tracers[obj] = nil end
-        if nametags[obj] then pcall(function() nametags[obj]:Destroy() end) nametags[obj] = nil end
-    end))
+    table.insert(connections, Workspace.DescendantRemoving:Connect(removeModelRefs))
 
-    -- Автоматический перескан при респавне персонажа
     table.insert(connections, LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         scan()
@@ -160,7 +165,7 @@ local function enable()
         local fovRatio = currentFOV / baseFOV
 
         for model, line in pairs(tracers) do
-            if not model or not model.Parent or isIgnored(model) or not settings.TracerEnabled then
+            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
                 tracers[model] = nil
             else
@@ -177,7 +182,7 @@ local function enable()
         end
 
         for model, tag in pairs(nametags) do
-            if not model or not model.Parent or isIgnored(model) or not settings.NameTagEnabled then
+            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
                 pcall(function() tag:Destroy() end)
                 nametags[model] = nil
             else
@@ -203,7 +208,7 @@ local function enable()
 end
 
 function disable()
-    if renderConnection then renderConnection:Disconnect() end
+    if renderConnection then renderConnection:Disconnect() renderConnection = nil end
     for _, conn in pairs(connections) do conn:Disconnect() end
     connections = {}
     clearESP()
