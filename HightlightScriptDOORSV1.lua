@@ -31,7 +31,7 @@ local entityMap = {
 -- Цвета
 local highlightColor = Color3.fromRGB(0,255,255)
 local tracerColor = Color3.fromRGB(0,255,255)
-local entityColor = Color3.fromRGB(255,128,0)
+local entityColor = Color3.fromRGB(0,255,255)  -- голубой для Entity ESP
 
 -- Хранилища ESP
 local highlights = {}      -- Highlight Instances per model
@@ -114,7 +114,7 @@ local function addEntity(part)
     ch.Radius = radius
     -- высота чуть меньше части
     ch.Height = part.Size.Y * 0.8
-    ch.Transparency = 0.4
+    ch.Transparency = 0.3  -- менее видимо
     ch.ZIndex = 5
     ch.Parent = part
     entities[part] = ch
@@ -157,7 +157,7 @@ local function onRender()
     local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     for model, data in pairs(tracers) do
         local line, part = data.line, data.part
-        if model and part and part:IsDescendantOf(Workspace) and root then
+        if settings.Tracer and model and part and part:IsDescendantOf(Workspace) and root then
             local p2, onScreen = Camera:WorldToViewportPoint(part.Position)
             line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
             line.To = Vector2.new(p2.X, p2.Y)
@@ -186,7 +186,6 @@ local function startESP()
         highlights[o] = nil
         tracers[o] = nil
         nametags[o] = nil
-        -- entities очищаются при удалении самого Part через Workspace.DescendantRemoving
         entities[o] = nil
     end))
     table.insert(connections, RunService.RenderStepped:Connect(onRender))
@@ -208,7 +207,7 @@ return {
     EnableEntityESP = startESP,
     DisableEntityESP = stopESP,
     SetHighlight = function(v) settings.Highlight = v; scanAll() end,
-    SetTracer = function(v) settings.Tracer = v; scanAll() end,
+    SetTracer = function(v) settings.Tracer = v; if not v then clearTable(tracers) end; scanAll() end,
     SetNameTag = function(v) settings.NameTag = v; scanAll() end,
     SetShowDistance = function(v) settings.ShowDistance = v; scanAll() end,
 }
