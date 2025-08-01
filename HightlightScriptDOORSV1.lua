@@ -1,4 +1,4 @@
---// ✅ Улучшенный Item ESP с корректным удалением и повторной инициализацией после смерти
+--// ✅ Улучшенный Item + Entity ESP с 3D CylinderHandleAdornment для сущностей и поддержкой Toggle
 
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -13,17 +13,29 @@ local targetNames = {
     ["Vitamins"] = true, ["Smoothie"] = true, ["AlarmClock"] = true,
     ["Bandage"] = true, ["Candle"] = true, ["LibraryHintPaper"] = true,
     ["SkeletonKey"] = true, ["Flashlight"] = true, ["RiftSmoothie"] = true,
-    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true, ["CrucifixWall"] = true,
-    ["Straplight"] = true, ["Glowsticks"] = true, ["BatteryPack"] = true,
-    ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true, ["Starlight Bottle"] = true,
-    ["Starlight Jug"] = true, ["Shakelight"] = true, ["Gween Soda"] = true,
-    ["Bread"] = true, ["Cheese"] = true, ["StarVial"] = true, ["StarBottle"] = true, ["TimerLever"] = true,
+    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true,
+    ["CrucifixWall"] = true, ["Straplight"] = true, ["Glowsticks"] = true,
+    ["BatteryPack"] = true, ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true,
+    ["Starlight Bottle"] = true, ["Starlight Jug"] = true, ["Shakelight"] = true,
+    ["Gween Soda"] = true, ["Bread"] = true, ["Cheese"] = true,
+    ["StarVial"] = true, ["StarBottle"] = true, ["TimerLever"] = true,
+}
+
+local entityMap = {
+    RushMoving = "RushNew",
+    AmbushMoving = "RushNew",
+    Eyes = "Core",
+    BackdoorRush = "Main",
+    BackdoorLookman = "Core",
+    A60 = "Main",
+    A120 = "Main",
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
 local outlineColor = Color3.fromRGB(255, 255, 255)
+local entityColor = Color3.fromRGB(255, 128, 0)
 
-local highlights, tracers, nametags = {}, {}, {}
+local highlights, tracers, nametags, adornments = {}, {}, {}, {}
 local connections, renderConnection = {}, nil
 
 local settings = {
@@ -60,13 +72,15 @@ local function clearESP()
     for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
     for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
     for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
-    highlights, tracers, nametags = {}, {}, {}
+    for _, a in pairs(adornments) do pcall(function() a:Destroy() end) end
+    highlights, tracers, nametags, adornments = {}, {}, {}, {}
 end
 
 local function removeModelRefs(model)
     if highlights[model] then pcall(function() highlights[model]:Destroy() end) highlights[model] = nil end
     if tracers[model] then pcall(function() tracers[model]:Remove() end) tracers[model] = nil end
     if nametags[model] then pcall(function() nametags[model]:Destroy() end) nametags[model] = nil end
+    if adornments[model] then pcall(function() adornments[model]:Destroy() end) adornments[model] = nil end
 end
 
 local function addHighlight(model)
@@ -123,13 +137,33 @@ local function addNameTag(model)
     end
 end
 
+local function addEntityAdornment(part)
+    local ch = Instance.new("CylinderHandleAdornment")
+    ch.Name = "_EntityESP"
+    ch.Adornee = part
+    ch.AlwaysOnTop = true
+    ch.Color3 = entityColor
+    ch.Radius = 3.5
+    ch.Height = 5
+    ch.Transparency = 0.25
+    ch.ZIndex = 5
+    ch.Parent = part
+    adornments[part] = ch
+end
+
 local function processModel(model)
     if targetNames[model.Name] and model:IsA("Model") and model:IsDescendantOf(Workspace) and not isIgnored(model) then
         addHighlight(model)
         addTracer(model)
         addNameTag(model)
-    else
-        removeModelRefs(model)
+    end
+
+    local entityPartName = entityMap[model.Name]
+    if entityPartName and model:IsA("Model") then
+        local part = model:FindFirstChild(entityPartName)
+        if part and part:IsA("BasePart") and not adornments[part] then
+            addEntityAdornment(part)
+        end
     end
 end
 
@@ -226,8 +260,8 @@ function setMatchColors(val) settings.MatchColors = val scan() end
 function setDistanceSizeRatio(val) settings.DistanceSizeRatio = val scan() end
 
 return {
-    EnableESP = enable,
-    DisableESP = disable,
+    EnableESPEntites = enable,
+    DisableESPEntites = disable,
     SetHighlight = setHighlight,
     SetTracer = setTracer,
     SetNameTag = setNameTag,
