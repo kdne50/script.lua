@@ -1,4 +1,4 @@
---// ✅ Улучшенный Item + Entity ESP с 3D CylinderHandleAdornment для сущностей и поддержкой Toggle
+--// ✅ Полный ESP-модуль: Item ESP + Entity ESP (CylinderHandleAdornment)
 
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -6,270 +6,199 @@ local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
-local targetNames = {
-    ["LiveHintBook"] = true, ["KeyObtain"] = true, ["LiveBreakerPolePickup"] = true,
-    ["SmoothieSpawner"] = true, ["Shears"] = true, ["Lighter"] = true,
-    ["Crucifix"] = true, ["Lockpick"] = true, ["Battery"] = true,
-    ["Vitamins"] = true, ["Smoothie"] = true, ["AlarmClock"] = true,
-    ["Bandage"] = true, ["Candle"] = true, ["LibraryHintPaper"] = true,
-    ["SkeletonKey"] = true, ["Flashlight"] = true, ["RiftSmoothie"] = true,
-    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true,
-    ["CrucifixWall"] = true, ["Straplight"] = true, ["Glowsticks"] = true,
-    ["BatteryPack"] = true, ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true,
-    ["Starlight Bottle"] = true, ["Starlight Jug"] = true, ["Shakelight"] = true,
-    ["Gween Soda"] = true, ["Bread"] = true, ["Cheese"] = true,
-    ["StarVial"] = true, ["StarBottle"] = true, ["TimerLever"] = true,
+-- Список имен предметов для Item ESP
+local itemNames = {
+    LiveHintBook=true, KeyObtain=true, LiveBreakerPolePickup=true,
+    SmoothieSpawner=true, Shears=true, Lighter=true,
+    Crucifix=true, Lockpick=true, Battery=true,
+    Vitamins=true, Smoothie=true, AlarmClock=true,
+    Bandage=true, Candle=true, LibraryHintPaper=true,
+    SkeletonKey=true, Flashlight=true, RiftSmoothie=true,
+    FuseObtain=true, BandagePack=true, Bulklight=true,
+    CrucifixWall=true, Straplight=true, Glowsticks=true,
+    BatteryPack=true, LaserPointer=true, ElectricalKeyObtain=true,
+    ["Starlight Bottle"]=true, ["Starlight Jug"]=true, Shakelight=true,
+    ["Gween Soda"]=true, Bread=true, Cheese=true,
+    StarVial=true, StarBottle=true, TimerLever=true,
 }
 
+-- Сопоставление моделей сущностей к их Part для Entity ESP
 local entityMap = {
-    RushMoving = "RushNew",
-    AmbushMoving = "RushNew",
-    Eyes = "Core",
-    BackdoorRush = "Main",
-    BackdoorLookman = "Core",
-    A60 = "Main",
-    A120 = "Main",
+    RushMoving="RushNew", AmbushMoving="RushNew", Eyes="Core",
+    BackdoorRush="Main", BackdoorLookman="Core", A60="Main", A120="Main",
 }
 
-local highlightColor = Color3.fromRGB(0, 255, 255)
-local outlineColor = Color3.fromRGB(255, 255, 255)
-local entityColor = Color3.fromRGB(255, 128, 0)
+-- Цвета
+local highlightColor = Color3.fromRGB(0,255,255)
+local tracerColor = Color3.fromRGB(0,255,255)
+local entityColor = Color3.fromRGB(255,128,0)
 
-local highlights, tracers, nametags, adornments = {}, {}, {}, {}
-local connections, renderConnection = {}, nil
+-- Хранилища ESP
+local highlights = {}      -- Highlight Instances
+local tracers = {}         -- Drawing Lines
+local nametags = {}        -- BillboardGui
+local entities = {}        -- CylinderHandleAdornment
 
+-- Настройки ESP
 local settings = {
-    HighlightEnabled = true,
-    TracerEnabled = true,
-    NameTagEnabled = false,
-
-    TextSize = 20,
-    Font = Enum.Font.Oswald,
-    TextTransparency = 0,
-    TextOutlineTransparency = 0.5,
+    Highlight = true,
+    Tracer = true,
+    NameTag = false,
     ShowDistance = false,
-    DistanceSizeRatio = 1.0,
-    MatchColors = true
 }
 
-local baseFOV = Camera.FieldOfView
-local baseTextSize = 24
-local baseBillboardSize = UDim2.new(0, 200, 0, 50)
+-- Вспомогательные функции
+local function isIgnored(item)
+    return item:IsDescendantOf(LocalPlayer.Character) or item:IsDescendantOf(LocalPlayer.Backpack)
+end
 
-local function isHeldByPlayer(model)
-    for _, player in pairs(Players:GetPlayers()) do
-        if player.Character and model:IsDescendantOf(player.Character) then return true end
-        if player:FindFirstChild("Backpack") and model:IsDescendantOf(player.Backpack) then return true end
+-- Очистка нужного ESP типа
+local function clearTable(tbl)
+    for obj, inst in pairs(tbl) do
+        pcall(function() inst:Destroy() end)
     end
-    return false
+    table.clear(tbl)
 end
 
-local function isIgnored(model)
-    return model:IsDescendantOf(LocalPlayer.Backpack) or model:IsDescendantOf(LocalPlayer.Character) or isHeldByPlayer(model)
-end
-
-local function clearESP()
-    for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
-    for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
-    for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
-    for _, a in pairs(adornments) do pcall(function() a:Destroy() end) end
-    highlights, tracers, nametags, adornments = {}, {}, {}, {}
-end
-
-local function removeModelRefs(model)
-    if highlights[model] then pcall(function() highlights[model]:Destroy() end) highlights[model] = nil end
-    if tracers[model] then pcall(function() tracers[model]:Remove() end) tracers[model] = nil end
-    if nametags[model] then pcall(function() nametags[model]:Destroy() end) nametags[model] = nil end
-    if adornments[model] then pcall(function() adornments[model]:Destroy() end) adornments[model] = nil end
-end
-
+-- Добавление Highlight
 local function addHighlight(model)
-    if not highlights[model] and settings.HighlightEnabled then
-        local h = Instance.new("Highlight")
-        h.Name = "_ItemESP"
-        h.FillColor = highlightColor
-        h.OutlineColor = outlineColor
-        h.FillTransparency = 0.8
-        h.OutlineTransparency = 0
-        h.Adornee = model
-        h.Parent = model
-        highlights[model] = h
-    end
+    if not settings.Highlight then return end
+    if highlights[model] then return end
+    local h = Instance.new("Highlight")
+    h.Adornee = model
+    h.FillColor = highlightColor
+    h.OutlineColor = highlightColor
+    h.Parent = model
+    highlights[model] = h
 end
 
-local function addTracer(model)
-    if not tracers[model] and settings.TracerEnabled then
-        local line = Drawing.new("Line")
-        line.Thickness = 1.5
-        line.Color = highlightColor
-        line.Visible = false
-        tracers[model] = line
-    end
+-- Добавление Tracer
+local function addTracer(part)
+    if not settings.Tracer then return end
+    if tracers[part] then return end
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Color = tracerColor
+    line.Transparency = 1
+    line.Visible = false
+    tracers[part] = line
 end
 
-local function addNameTag(model)
-    if not nametags[model] and settings.NameTagEnabled then
-        local part = model:FindFirstChildWhichIsA("BasePart")
-        if not part then return end
-
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "_ESP_NameTag"
-        billboard.Adornee = part
-        billboard.AlwaysOnTop = true
-        billboard.Size = baseBillboardSize
-        billboard.StudsOffset = Vector3.new(0, -0.5, 0)
-        billboard.Parent = model
-
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = settings.MatchColors and highlightColor or Color3.new(1, 1, 1)
-        label.TextStrokeTransparency = settings.TextOutlineTransparency
-        label.TextTransparency = settings.TextTransparency
-        label.Font = settings.Font
-        label.TextSize = baseTextSize
-        label.RichText = true
-        label.TextScaled = false
-        label.Parent = billboard
-        label.Text = model.Name
-
-        nametags[model] = billboard
-    end
+-- Добавление NameTag
+local function addNameTag(part)
+    if not settings.NameTag then return end
+    if nametags[part] then return end
+    local gui = Instance.new("BillboardGui")
+    gui.Adornee = part
+    gui.Size = UDim2.new(0,100,0,30)
+    gui.AlwaysOnTop = true
+    gui.Parent = part
+    local lbl = Instance.new("TextLabel", gui)
+    lbl.Size = UDim2.new(1,0,1,0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = part.Name
+    lbl.TextColor3 = Color3.new(1,1,1)
+    nametags[part] = gui
 end
 
-local function addEntityAdornment(part)
+-- Добавление Entity ESP
+local function addEntity(part)
+    if entities[part] then return end
     local ch = Instance.new("CylinderHandleAdornment")
-    ch.Name = "_EntityESP"
     ch.Adornee = part
     ch.AlwaysOnTop = true
     ch.Color3 = entityColor
-    ch.Radius = 3.5
-    ch.Height = 5
-    ch.Transparency = 0.25
+    ch.Radius = part.Size.Magnitude/2
+    ch.Height = part.Size.Y + 1
+    ch.Transparency = 0.4
     ch.ZIndex = 5
     ch.Parent = part
-    adornments[part] = ch
+    entities[part] = ch
 end
 
-local function processModel(model)
-    if targetNames[model.Name] and model:IsA("Model") and model:IsDescendantOf(Workspace) and not isIgnored(model) then
-        addHighlight(model)
-        addTracer(model)
-        addNameTag(model)
+-- Процессинг модели или Part
+local function process(obj)
+    if isIgnored(obj) then return end
+    -- Item ESP
+    if obj:IsA("Model") and itemNames[obj.Name] then
+        addHighlight(obj)
+        for _, p in ipairs(obj:GetDescendants()) do
+            if p:IsA("BasePart") then
+                addTracer(p)
+                addNameTag(p)
+            end
+        end
     end
-
-    local entityPartName = entityMap[model.Name]
-    if entityPartName and model:IsA("Model") then
-        local part = model:FindFirstChild(entityPartName)
-        if part and part:IsA("BasePart") and not adornments[part] then
-            addEntityAdornment(part)
+    -- Entity ESP
+    local partName = entityMap[obj.Name]
+    if obj:IsA("Model") and partName then
+        local p = obj:FindFirstChild(partName)
+        if p and p:IsA("BasePart") then
+            addEntity(p)
         end
     end
 end
 
-local function scan()
-    clearESP()
+-- Сканирование всего рабочего пространства
+local function scanAll()
+    clearTable(highlights)
+    clearTable(tracers)
+    clearTable(nametags)
+    clearTable(entities)
     for _, obj in pairs(Workspace:GetDescendants()) do
-        processModel(obj)
+        process(obj)
     end
 end
 
-local function onNewChild(obj)
-    task.delay(0.05, function()
-        processModel(obj)
-    end)
+-- Обработка обновления визуалов (трасеры, дистанция)
+local function onRender()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    for part, line in pairs(tracers) do
+        if part and part:IsDescendantOf(Workspace) and root then
+            local p2, onScreen = Camera:WorldToViewportPoint(part.Position)
+            line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+            line.To = Vector2.new(p2.X, p2.Y)
+            line.Visible = onScreen
+        else
+            line.Visible = false
+        end
+    end
+    if settings.ShowDistance then
+        for part, gui in pairs(nametags) do
+            local dist = (root.Position - part.Position).Magnitude
+            gui:FindFirstChildOfClass("TextLabel").Text = string.format("%s [%.0f]", part.Name, dist)
+        end
+    end
 end
 
-local function enable()
-    disable()
-    scan()
-
-    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
-    table.insert(connections, Workspace.DescendantRemoving:Connect(removeModelRefs))
-
-    table.insert(connections, LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1)
-        scan()
+-- Подключение/отключение слушателей
+local connections = {}
+local function startESP()
+    scanAll()
+    table.insert(connections, Workspace.DescendantAdded:Connect(process))
+    table.insert(connections, Workspace.DescendantRemoving:Connect(function(o)
+        highlights[o] = nil; tracers[o] = nil; nametags[o] = nil; entities[o] = nil
     end))
-
-    renderConnection = RunService.RenderStepped:Connect(function()
-        local character = LocalPlayer.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        local currentFOV = Camera.FieldOfView
-        local fovRatio = currentFOV / baseFOV
-
-        for model, line in pairs(tracers) do
-            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
-                pcall(function() line:Remove() end)
-                tracers[model] = nil
-            else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                if part and root then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    line.To = Vector2.new(pos.X, pos.Y)
-                    line.Visible = onScreen
-                else
-                    line.Visible = false
-                end
-            end
-        end
-
-        for model, tag in pairs(nametags) do
-            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
-                pcall(function() tag:Destroy() end)
-                nametags[model] = nil
-            else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                local label = tag:FindFirstChildOfClass("TextLabel")
-                if part and label then
-                    if root and settings.ShowDistance then
-                        local distance = math.floor((root.Position - part.Position).Magnitude)
-                        label.Text = string.format("%s [%d]", model.Name, distance)
-                    else
-                        label.Text = model.Name
-                    end
-                    local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
-                    label.TextSize = newTextSize
-
-                    local scaleFactor = newTextSize / baseTextSize
-                    tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
-                                         baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
-                end
-            end
-        end
-    end)
+    table.insert(connections, RunService.RenderStepped:Connect(onRender))
 end
 
-function disable()
-    if renderConnection then renderConnection:Disconnect() renderConnection = nil end
-    for _, conn in pairs(connections) do conn:Disconnect() end
+local function stopESP()
+    for _, conn in ipairs(connections) do conn:Disconnect() end
     connections = {}
-    clearESP()
+    clearTable(highlights)
+    clearTable(tracers)
+    clearTable(nametags)
+    clearTable(entities)
 end
 
-function setHighlight(v) settings.HighlightEnabled = v scan() end
-function setTracer(v) settings.TracerEnabled = v scan() end
-function setNameTag(v) settings.NameTagEnabled = v scan() end
-function setFont(font) settings.Font = font scan() end
-function setTextSize(size) settings.TextSize = size scan() end
-function setTextTransparency(val) settings.TextTransparency = val scan() end
-function setTextOutlineTransparency(val) settings.TextOutlineTransparency = val scan() end
-function setShowDistance(val) settings.ShowDistance = val scan() end
-function setMatchColors(val) settings.MatchColors = val scan() end
-function setDistanceSizeRatio(val) settings.DistanceSizeRatio = val scan() end
-
+-- Экспорт функций
 return {
-    EnableESPEntites = enable,
-    DisableESPEntites = disable,
-    SetHighlight = setHighlight,
-    SetTracer = setTracer,
-    SetNameTag = setNameTag,
-    SetFont = setFont,
-    SetTextSize = setTextSize,
-    SetTextTransparency = setTextTransparency,
-    SetTextOutlineTransparency = setTextOutlineTransparency,
-    SetShowDistance = setShowDistance,
-    SetMatchColors = setMatchColors,
-    SetDistanceSizeRatio = setDistanceSizeRatio
+    EnableItemESP = startESP,
+    DisableItemESP = stopESP,
+    EnableEntityESP = startESP,
+    DisableEntityESP = stopESP,
+    SetHighlight = function(v) settings.Highlight = v; scanAll() end,
+    SetTracer = function(v) settings.Tracer = v; scanAll() end,
+    SetNameTag = function(v) settings.NameTag = v; scanAll() end,
+    SetShowDistance = function(v) settings.ShowDistance = v; scanAll() end,
 }
