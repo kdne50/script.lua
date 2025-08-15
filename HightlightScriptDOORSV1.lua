@@ -21,6 +21,7 @@ local targetNames = {
     ["Lantern"] = true, ["BigPropTool"] = true, ["Multitool"] = true, ["GoldGun"] = true, ["RiftCandle"] = true,
     ["RiftJar"] = true, ["TipJar"] = true, ["Knockbomb"] = true, ["Bomb"] = true, ["Donut"] = true, ["BigBomb"] = true,
     ["StarJug"] = true, ["Nanner"] = true, ["SnakeBox"] = true, ["AloeVera"] = true, ["Compass"] = true, ["Lotus"] = true, ["NannerPeel"] = true, ["HolyGrenade"] = true, ["StopSign"] = true,
+    ["StardustPickup"] = true, ["GoldPile"] = true,
 }
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
