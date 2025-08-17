@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
+-- Таблица предметов и отображаемых имен
 local TargetItemsHighlights51 = {
     ["LiveHintBook"] = "Book",
     ["KeyObtain"] = "Key",
@@ -68,6 +69,7 @@ local TargetItemsHighlights51 = {
     ["LotusPetalPickup"] = "Big-Lotus",
 }
 
+-- Дополнительная ESP таблица для будущих Entities
 local EntitiesHighlights203 = {}
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
@@ -79,14 +81,14 @@ local connections, renderConnection = {}, nil
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
-    NameTagEnabled = true,
-    TextSize = 35,
+    NameTagEnabled = true, -- включаем чтобы видеть текст
+    TextSize = 20,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
     ShowDistance = false,
     DistanceSizeRatio = 1.0,
-    MatchColors = true,
+    MatchColors = true
 }
 
 local baseFOV = Camera.FieldOfView
@@ -167,6 +169,7 @@ local function addNameTag(model)
         label.TextScaled = false
         label.Parent = billboard
 
+        -- используем отображаемое имя
         label.Text = TargetItemsHighlights51[model.Name] or model.Name
 
         nametags[model] = billboard
@@ -247,11 +250,10 @@ local function enable()
                     end
                     local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
                     label.TextSize = newTextSize
+
                     local scaleFactor = newTextSize / baseTextSize
-                    tag.Size = UDim2.new(
-                        baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
-                        baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor
-                    )
+                    tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
+                                         baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
                 end
             end
         end
@@ -259,13 +261,8 @@ local function enable()
 end
 
 function disable()
-    if renderConnection then
-        renderConnection:Disconnect()
-        renderConnection = nil
-    end
-    for _, conn in pairs(connections) do
-        conn:Disconnect()
-    end
+    if renderConnection then renderConnection:Disconnect() renderConnection = nil end
+    for _, conn in pairs(connections) do conn:Disconnect() end
     connections = {}
     clearESP()
 end
