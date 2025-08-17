@@ -209,66 +209,68 @@ local function enable()
         scan()
     end))
 
-renderConnection = RunService.RenderStepped:Connect(function()
-    local character = LocalPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
-    local currentFOV = Camera.FieldOfView
-    local fovRatio = currentFOV / baseFOV
+local function enable()
+    disable()
+    scan()
 
-    for model, line in pairs(tracers) do
-        if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
-            pcall(function() line:Remove() end)
-            tracers[model] = nil
-        else
-            local part = model:FindFirstChildWhichIsA("BasePart")
-            if part and root then
-                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                line.To = Vector2.new(pos.X, pos.Y)
-                line.Visible = onScreen
+    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
+    table.insert(connections, Workspace.DescendantRemoving:Connect(removeModelRefs))
+
+    table.insert(connections, LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(1)
+        scan()
+    end))
+
+    renderConnection = RunService.RenderStepped:Connect(function()
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        local currentFOV = Camera.FieldOfView
+        local fovRatio = currentFOV / baseFOV
+
+        for model, line in pairs(tracers) do
+            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
+                pcall(function() line:Remove() end)
+                tracers[model] = nil
             else
-                line.Visible = false
-            end
-        end
-    end
-
-    for model, tag in pairs(nametags) do
-        if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
-            pcall(function() tag:Destroy() end)
-            nametags[model] = nil
-        else
-            local part = model:FindFirstChildWhichIsA("BasePart")
-            local label = tag:FindFirstChildOfClass("TextLabel")
-            if part and label then
-                if root and settings.ShowDistance then
-                    local distance = math.floor((root.Position - part.Position).Magnitude)
-                    label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, distance)
+                local part = model:FindFirstChildWhichIsA("BasePart")
+                if part and root then
+                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    line.To = Vector2.new(pos.X, pos.Y)
+                    line.Visible = onScreen
                 else
-                    label.Text = TargetItemsHighlights51[model.Name] or model.Name
+                    line.Visible = false
                 end
-                local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
-                label.TextSize = newTextSize
-                local scaleFactor = newTextSize / baseTextSize
-                tag.Size = UDim2.new(
-                    baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
-                    baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor
-                )
             end
         end
-    end
-end)
 
-function disable()
-    if renderConnection then
-        renderConnection:Disconnect()
-        renderConnection = nil
-    end
-    for _, conn in pairs(connections) do
-        conn:Disconnect()
-    end
-    connections = {}
-    clearESP()
-end
+        for model, tag in pairs(nametags) do
+            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
+                pcall(function() tag:Destroy() end)
+                nametags[model] = nil
+            else
+                local part = model:FindFirstChildWhichIsA("BasePart")
+                local label = tag:FindFirstChildOfClass("TextLabel")
+                if part and label then
+                    if root and settings.ShowDistance then
+                        local distance = math.floor((root.Position - part.Position).Magnitude)
+                        label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, distance)
+                    else
+                        label.Text = TargetItemsHighlights51[model.Name] or model.Name
+                    end
+                    local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
+                    label.TextSize = newTextSize
+                    local scaleFactor = newTextSize / baseTextSize
+                    tag.Size = UDim2.new(
+                        baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
+                        baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor
+                    )
+                end
+            end
+        end
+    end) -- закрываем RenderStepped
+end -- закрываем функцию enable
+
 
 function setHighlight(v) settings.HighlightEnabled = v scan() end
 function setTracer(v) settings.TracerEnabled = v scan() end
