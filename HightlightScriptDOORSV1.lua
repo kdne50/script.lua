@@ -6,7 +6,6 @@ local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
--- Таблица предметов и отображаемых имен
 local TargetItemsHighlights51 = {
     ["LiveHintBook"] = "Book",
     ["KeyObtain"] = "Key",
@@ -69,7 +68,6 @@ local TargetItemsHighlights51 = {
     ["LotusPetalPickup"] = "Big-Lotus",
 }
 
--- Дополнительная ESP таблица для будущих Entities
 local EntitiesHighlights203 = {}
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
@@ -81,14 +79,16 @@ local connections, renderConnection = {}, nil
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
-    NameTagEnabled = true, -- включаем чтобы видеть текст
-    TextSize = 25,
+    NameTagEnabled = true,
+    TextSize = 35,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
     ShowDistance = false,
     DistanceSizeRatio = 1.0,
-    MatchColors = true
+    MatchColors = true,
+    TracerThickness = 1.5,
+    TracerColor = Color3.fromRGB(0, 255, 255),
 }
 
 local baseFOV = Camera.FieldOfView
@@ -211,61 +211,56 @@ local function enable()
         scan()
     end))
 
-    renderConnection = RunService.RenderStepped:Connect(function()
-        local character = LocalPlayer.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        local currentFOV = Camera.FieldOfView
-        local fovRatio = currentFOV / baseFOV
+renderConnection = RunService.RenderStepped:Connect(function()
+    local character = LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local currentFOV = Camera.FieldOfView
+    local fovRatio = currentFOV / baseFOV
 
-        for model, line in pairs(tracers) do
-            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
-                pcall(function() line:Remove() end)
-                tracers[model] = nil
+    for model, line in pairs(tracers) do
+        if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
+            pcall(function() line:Remove() end)
+            tracers[model] = nil
+        else
+            local part = model:FindFirstChildWhichIsA("BasePart")
+            if part and root then
+                local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                line.To = Vector2.new(pos.X, pos.Y)
+                line.Thickness = settings.TracerThickness or 1.5
+                line.Color = settings.TracerColor or highlightColor
+                line.Visible = onScreen
             else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                if part and root then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    line.To = Vector2.new(pos.X, pos.Y)
-                    line.Visible = onScreen
+                line.Visible = false
+            end
+        end
+    end
+
+    for model, tag in pairs(nametags) do
+        if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
+            pcall(function() tag:Destroy() end)
+            nametags[model] = nil
+        else
+            local part = model:FindFirstChildWhichIsA("BasePart")
+            local label = tag:FindFirstChildOfClass("TextLabel")
+            if part and label then
+                if root and settings.ShowDistance then
+                    local distance = math.floor((root.Position - part.Position).Magnitude)
+                    label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, distance)
                 else
-                    line.Visible = false
+                    label.Text = TargetItemsHighlights51[model.Name] or model.Name
                 end
+                local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
+                label.TextSize = newTextSize
+
+                local scaleFactor = newTextSize / baseTextSize
+                tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
+                                     baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
             end
         end
+    end
+end)
 
-        for model, tag in pairs(nametags) do
-            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
-                pcall(function() tag:Destroy() end)
-                nametags[model] = nil
-            else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                local label = tag:FindFirstChildOfClass("TextLabel")
-                if part and label then
-                    if root and settings.ShowDistance then
-                        local distance = math.floor((root.Position - part.Position).Magnitude)
-                        label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, distance)
-                    else
-                        label.Text = TargetItemsHighlights51[model.Name] or model.Name
-                    end
-                    local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
-                    label.TextSize = newTextSize
-
-                    local scaleFactor = newTextSize / baseTextSize
-                    tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
-                                         baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
-                end
-            end
-        end
-    end)
-end
-
-function disable()
-    if renderConnection then renderConnection:Disconnect() renderConnection = nil end
-    for _, conn in pairs(connections) do conn:Disconnect() end
-    connections = {}
-    clearESP()
-end
 
 function setHighlight(v) settings.HighlightEnabled = v scan() end
 function setTracer(v) settings.TracerEnabled = v scan() end
