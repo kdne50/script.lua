@@ -167,7 +167,6 @@ local function addNameTag(model)
         label.TextScaled = false
         label.Parent = billboard
 
-        -- используем отображаемое имя
         label.Text = TargetItemsHighlights51[model.Name] or model.Name
 
         nametags[model] = billboard
@@ -196,18 +195,6 @@ local function onNewChild(obj)
         processModel(obj)
     end)
 end
-
-local function enable()
-    disable()
-    scan()
-
-    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
-    table.insert(connections, Workspace.DescendantRemoving:Connect(removeModelRefs))
-
-    table.insert(connections, LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1)
-        scan()
-    end))
 
 local function enable()
     disable()
@@ -268,9 +255,20 @@ local function enable()
                 end
             end
         end
-    end) -- закрываем RenderStepped
-end -- закрываем функцию enable
+    end)
+end
 
+function disable()
+    if renderConnection then
+        renderConnection:Disconnect()
+        renderConnection = nil
+    end
+    for _, conn in pairs(connections) do
+        conn:Disconnect()
+    end
+    connections = {}
+    clearESP()
+end
 
 function setHighlight(v) settings.HighlightEnabled = v scan() end
 function setTracer(v) settings.TracerEnabled = v scan() end
