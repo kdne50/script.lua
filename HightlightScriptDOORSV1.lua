@@ -87,8 +87,6 @@ local settings = {
     ShowDistance = false,
     DistanceSizeRatio = 1.0,
     MatchColors = true,
-    TracerThickness = 1.5,
-    TracerColor = Color3.fromRGB(0, 255, 255),
 }
 
 local baseFOV = Camera.FieldOfView
@@ -227,8 +225,6 @@ renderConnection = RunService.RenderStepped:Connect(function()
                 local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
                 line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                 line.To = Vector2.new(pos.X, pos.Y)
-                line.Thickness = settings.TracerThickness or 1.5
-                line.Color = settings.TracerColor or highlightColor
                 line.Visible = onScreen
             else
                 line.Visible = false
@@ -252,15 +248,27 @@ renderConnection = RunService.RenderStepped:Connect(function()
                 end
                 local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
                 label.TextSize = newTextSize
-
                 local scaleFactor = newTextSize / baseTextSize
-                tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
-                                     baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
+                tag.Size = UDim2.new(
+                    baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
+                    baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor
+                )
             end
         end
     end
 end)
 
+function disable()
+    if renderConnection then
+        renderConnection:Disconnect()
+        renderConnection = nil
+    end
+    for _, conn in pairs(connections) do
+        conn:Disconnect()
+    end
+    connections = {}
+    clearESP()
+end
 
 function setHighlight(v) settings.HighlightEnabled = v scan() end
 function setTracer(v) settings.TracerEnabled = v scan() end
