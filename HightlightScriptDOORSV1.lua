@@ -1,4 +1,4 @@
---// ✅ Улучшенный Item ESP с корректным удалением и повторной инициализацией после смерти
+--// ✅ Улучшенный Item ESP с корректным отображением и подготовкой для Entities
 
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -6,23 +6,71 @@ local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
-local targetNames = {
-    ["LiveHintBook"] = true, ["KeyObtain"] = true, ["LiveBreakerPolePickup"] = true,
-    ["SmoothieSpawner"] = true, ["Shears"] = true, ["Lighter"] = true,
-    ["Crucifix"] = true, ["Lockpick"] = true, ["Battery"] = true,
-    ["Vitamins"] = true, ["Smoothie"] = true, ["AlarmClock"] = true,
-    ["Bandage"] = true, ["Candle"] = true, ["LibraryHintPaper"] = true,
-    ["SkeletonKey"] = true, ["Flashlight"] = true, ["RiftSmoothie"] = true,
-    ["FuseObtain"] = true, ["BandagePack"] = true, ["Bulklight"] = true, ["CrucifixWall"] = true,
-    ["Straplight"] = true, ["Glowsticks"] = true, ["BatteryPack"] = true,
-    ["LaserPointer"] = true, ["ElectricalKeyObtain"] = true, ["Starlight Bottle"] = true,
-    ["Starlight Jug"] = true, ["Shakelight"] = true, ["Gween Soda"] = true,
-    ["Bread"] = true, ["Cheese"] = true, ["StarVial"] = true, ["StarBottle"] = true, ["TimerLever"] = true, 
-    ["Lantern"] = true, ["BigPropTool"] = true, ["Multitool"] = true, ["GoldGun"] = true, ["RiftCandle"] = true,
-    ["RiftJar"] = true, ["TipJar"] = true, ["Knockbomb"] = true, ["Bomb"] = true, ["Donut"] = true, ["BigBomb"] = true,
-    ["StarJug"] = true, ["Nanner"] = true, ["SnakeBox"] = true, ["AloeVera"] = true, ["Compass"] = true, ["Lotus"] = true, ["NannerPeel"] = true, ["HolyGrenade"] = true, ["StopSign"] = true,
-    ["StardustPickup"] = true, ["GoldPile"] = true, ["LotusPetalPickup"] = true,
+-- Таблица предметов и отображаемых имен
+local TargetItemsHighlights51 = {
+    ["LiveHintBook"] = "Book",
+    ["KeyObtain"] = "Key",
+    ["LiveBreakerPolePickup"] = "Breaker",
+    ["SmoothieSpawner"] = "Smoothie",
+    ["Shears"] = "Shears",
+    ["Lighter"] = "Lighter",
+    ["Crucifix"] = "Crucifix",
+    ["Lockpick"] = "Lockpick",
+    ["Battery"] = "Battery",
+    ["Vitamins"] = "Vitamins",
+    ["Smoothie"] = "Smoothie",
+    ["AlarmClock"] = "Alarm-Clock",
+    ["Bandage"] = "Bandage",
+    ["Candle"] = "Candle",
+    ["LibraryHintPaper"] = "Paper",
+    ["SkeletonKey"] = "SkeletonKey",
+    ["Flashlight"] = "Flashlight",
+    ["RiftSmoothie"] = "Rift-Smoothie",
+    ["FuseObtain"] = "Fuse",
+    ["BandagePack"] = "Bandage-Pack",
+    ["Bulklight"] = "Bulklight",
+    ["CrucifixWall"] = "Crucifix",
+    ["Straplight"] = "Straplight",
+    ["Glowsticks"] = "Glowsticks",
+    ["BatteryPack"] = "Battery-Pack",
+    ["LaserPointer"] = "Laser",
+    ["ElectricalKeyObtain"] = "Key",
+    ["Starlight Bottle"] = "Starlight-Bottle",
+    ["Starlight Jug"] = "Starlight-Jug",
+    ["Shakelight"] = "Shakelight",
+    ["Gween Soda"] = "Gween-Soda",
+    ["Bread"] = "Bread",
+    ["Cheese"] = "Cheese",
+    ["StarVial"] = "Star-Vial",
+    ["StarBottle"] = "Star-Bottle",
+    ["TimerLever"] = "Lever",
+    ["Lantern"] = "Lantern",
+    ["BigPropTool"] = "BigPropTool",
+    ["Multitool"] = "Multi-Tool",
+    ["GoldGun"] = "Gun",
+    ["RiftCandle"] = "Rift-Candle",
+    ["RiftJar"] = "Rift-Jar",
+    ["TipJar"] = "Tip-Jar",
+    ["Knockbomb"] = "Knock-Bomb",
+    ["Bomb"] = "Bomb",
+    ["Donut"] = "Donut",
+    ["BigBomb"] = "Big-Bomb",
+    ["StarJug"] = "Star-Jug",
+    ["Nanner"] = "Nanner",
+    ["SnakeBox"] = "Box",
+    ["AloeVera"] = "Aloe-Vera",
+    ["Compass"] = "Compass",
+    ["Lotus"] = "Lotus",
+    ["NannerPeel"] = "NannerPeel",
+    ["HolyGrenade"] = "Holy-Grenade",
+    ["StopSign"] = "Stop-Sign",
+    ["StardustPickup"] = "Stardust",
+    ["GoldPile"] = "Gold",
+    ["LotusPetalPickup"] = "Big-Lotus",
 }
+
+-- Дополнительная ESP таблица для будущих Entities
+local EntitiesHighlights203 = {}
 
 local highlightColor = Color3.fromRGB(0, 255, 255)
 local outlineColor = Color3.fromRGB(255, 255, 255)
@@ -33,8 +81,7 @@ local connections, renderConnection = {}, nil
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
-    NameTagEnabled = false,
-
+    NameTagEnabled = true, -- включаем чтобы видеть текст
     TextSize = 20,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
@@ -121,14 +168,16 @@ local function addNameTag(model)
         label.RichText = true
         label.TextScaled = false
         label.Parent = billboard
-        label.Text = model.Name
+
+        -- используем отображаемое имя
+        label.Text = TargetItemsHighlights51[model.Name] or model.Name
 
         nametags[model] = billboard
     end
 end
 
 local function processModel(model)
-    if targetNames[model.Name] and model:IsA("Model") and model:IsDescendantOf(Workspace) and not isIgnored(model) then
+    if TargetItemsHighlights51[model.Name] and model:IsA("Model") and model:IsDescendantOf(Workspace) and not isIgnored(model) then
         addHighlight(model)
         addTracer(model)
         addNameTag(model)
@@ -195,9 +244,9 @@ local function enable()
                 if part and label then
                     if root and settings.ShowDistance then
                         local distance = math.floor((root.Position - part.Position).Magnitude)
-                        label.Text = string.format("%s [%d]", model.Name, distance)
+                        label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, distance)
                     else
-                        label.Text = model.Name
+                        label.Text = TargetItemsHighlights51[model.Name] or model.Name
                     end
                     local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
                     label.TextSize = newTextSize
@@ -241,5 +290,7 @@ return {
     SetTextOutlineTransparency = setTextOutlineTransparency,
     SetShowDistance = setShowDistance,
     SetMatchColors = setMatchColors,
-    SetDistanceSizeRatio = setDistanceSizeRatio
+    SetDistanceSizeRatio = setDistanceSizeRatio,
+    TargetItemsHighlights51 = TargetItemsHighlights51,
+    EntitiesHighlights203 = EntitiesHighlights203
 }
