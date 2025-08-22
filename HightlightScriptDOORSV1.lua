@@ -67,6 +67,7 @@ local TargetItemsHighlights51 = {
     ["StardustPickup"] = "Stardust",
     ["GoldPile"] = "Gold",
     ["LotusPetalPickup"] = "Big-Lotus",
+    ["GlitchCube"] = "Glitch-Fragment",
 }
 
 -- Дополнительная ESP таблица для будущих Entities
