@@ -1,12 +1,8 @@
---// ✅ Улучшенный Item ESP с корректным отображением и подготовкой для Entities
-
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
-
--- Таблица предметов и отображаемых имен
 local TargetItemsHighlights51 = {
     ["LiveHintBook"] = "Book",
     ["KeyObtain"] = "Key",
@@ -60,29 +56,26 @@ local TargetItemsHighlights51 = {
     ["SnakeBox"] = "Box",
     ["AloeVera"] = "Aloe-Vera",
     ["Compass"] = "Compass",
-    ["Lotus"] = "Lotus",
+    ["Lotus"] = "Big-Lotus",
     ["NannerPeel"] = "NannerPeel",
     ["HolyGrenade"] = "Holy-Grenade",
     ["StopSign"] = "Stop-Sign",
     ["StardustPickup"] = "Stardust",
     ["GoldPile"] = "Gold",
-    ["LotusPetalPickup"] = "Big-Lotus",
+    ["LotusPetalPickup"] = "Lotus",
     ["GlitchCube"] = "Glitch-Fragment",
 }
 
--- Дополнительная ESP таблица для будущих Entities
 local EntitiesHighlights203 = {}
-
 local highlightColor = Color3.fromRGB(0, 255, 255)
 local outlineColor = Color3.fromRGB(255, 255, 255)
-
 local highlights, tracers, nametags = {}, {}, {}
 local connections, renderConnection = {}, nil
 
 local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
-    NameTagEnabled = true, -- включаем чтобы видеть текст
+    NameTagEnabled = true,
     TextSize = 35,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
@@ -169,10 +162,7 @@ local function addNameTag(model)
         label.RichText = true
         label.TextScaled = false
         label.Parent = billboard
-
-        -- используем отображаемое имя
         label.Text = TargetItemsHighlights51[model.Name] or model.Name
-
         nametags[model] = billboard
     end
 end
