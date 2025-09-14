@@ -5191,26 +5191,47 @@ function Library:CreateWindow(...)
             end;
         end;
 
-        function Tab:UpdateWarningBox(Info)
-            if typeof(Info.Visible) == "boolean" then
-                TopBar.Visible = Info.Visible;
-                Tab:Resize();
-            end;
+       function Tab:UpdateWarningBox(Info)
+    if typeof(Info.Visible) == "boolean" then
+        TopBar.Visible = Info.Visible;
+        Tab:Resize();
+    end;
 
-            if typeof(Info.Title) == "string" then
-                TopBarLabel.Text = Info.Title;
-            end;
+    if typeof(Info.Title) == "string" then
+        TopBarLabel.Text = Info.Title;
+    end;
 
-            if typeof(Info.Text) == "string" then
-                TopBarTextLabel.Text = Info.Text;
-        
-                local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
-                TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
+    if typeof(Info.Text) == "string" then
+        TopBarTextLabel.Text = Info.Text;
 
-                Tab:Resize();
-            end;
+        local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
+        TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
 
-            -- кастомный info box (в тонах библиотеки)
+        Tab:Resize();
+    end;
+
+    TopBar.BorderColor3 = Info.IsNormal == true and Color3.fromRGB(27, 42, 53) or Color3.fromRGB(248, 51, 51)
+    TopBarInner.BorderColor3 = Info.IsNormal == true and Library.OutlineColor or Color3.fromRGB(0, 0, 0)
+    TopBarInner.BackgroundColor3 = Info.IsNormal == true and Library.BackgroundColor or Color3.fromRGB(117, 22, 17)
+    TopBarHighlight.BackgroundColor3 = Info.IsNormal == true and Library.AccentColor or Color3.fromRGB(255, 75, 75)
+    
+    TopBarLabel.TextColor3 = Info.IsNormal == true and Library.FontColor or Color3.fromRGB(255, 55, 55)
+    TopBarLabelStroke.Color = Info.IsNormal == true and Library.Black or Color3.fromRGB(174, 3, 3)
+
+    if not Library.RegistryMap[TopBarInner] then Library:AddToRegistry(TopBarInner, {}) end
+    if not Library.RegistryMap[TopBarHighlight] then Library:AddToRegistry(TopBarHighlight, {}) end
+    if not Library.RegistryMap[TopBarLabel] then Library:AddToRegistry(TopBarLabel, {}) end
+    if not Library.RegistryMap[TopBarLabelStroke] then Library:AddToRegistry(TopBarLabelStroke, {}) end
+
+    Library.RegistryMap[TopBarInner].Properties.BorderColor3 = Info.IsNormal == true and "OutlineColor" or nil;
+    Library.RegistryMap[TopBarInner].Properties.BackgroundColor3 = Info.IsNormal == true and "BackgroundColor" or nil;
+    Library.RegistryMap[TopBarHighlight].Properties.BackgroundColor3 = Info.IsNormal == true and "AccentColor" or nil;
+
+    Library.RegistryMap[TopBarLabel].Properties.TextColor3 = Info.IsNormal == true and "FontColor" or nil;
+    Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
+end
+
+-- кастомный InfoBox (как WarningBox, но в цветах библиотеки)
 function Tab:UpdateInfoBox(Data)
     self.InfoBox = self.InfoBox or Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor,
@@ -5240,36 +5261,14 @@ function Tab:UpdateInfoBox(Data)
 
     -- обновляем данные
     self.InfoTitle.Text = Data.Title or ""
-    self.InfoText.Text = Data.Text or ""
+    self.InfoText.Text  = Data.Text or ""
     self.InfoBox.Visible = Data.Visible or false
 end
 
+-- алиас для удобства
 function Tab:UpdateInfoTab(Data)
     return self:UpdateInfoBox(Data)
 end
-
-
-
-            TopBar.BorderColor3 = Info.IsNormal == true and Color3.fromRGB(27, 42, 53) or Color3.fromRGB(248, 51, 51)
-            TopBarInner.BorderColor3 = Info.IsNormal == true and Library.OutlineColor or Color3.fromRGB(0, 0, 0)
-            TopBarInner.BackgroundColor3 = Info.IsNormal == true and Library.BackgroundColor or Color3.fromRGB(117, 22, 17)
-            TopBarHighlight.BackgroundColor3 = Info.IsNormal == true and Library.AccentColor or Color3.fromRGB(255, 75, 75)
-             
-            TopBarLabel.TextColor3 = Info.IsNormal == true and Library.FontColor or Color3.fromRGB(255, 55, 55)
-            TopBarLabelStroke.Color = Info.IsNormal == true and Library.Black or Color3.fromRGB(174, 3, 3)
-
-            if not Library.RegistryMap[TopBarInner] then Library:AddToRegistry(TopBarInner, {}) end
-            if not Library.RegistryMap[TopBarHighlight] then Library:AddToRegistry(TopBarHighlight, {}) end
-            if not Library.RegistryMap[TopBarLabel] then Library:AddToRegistry(TopBarLabel, {}) end
-            if not Library.RegistryMap[TopBarLabelStroke] then Library:AddToRegistry(TopBarLabelStroke, {}) end
-
-            Library.RegistryMap[TopBarInner].Properties.BorderColor3 = Info.IsNormal == true and "OutlineColor" or nil;
-            Library.RegistryMap[TopBarInner].Properties.BackgroundColor3 = Info.IsNormal == true and "BackgroundColor" or nil;
-            Library.RegistryMap[TopBarHighlight].Properties.BackgroundColor3 = Info.IsNormal == true and "AccentColor" or nil;
-
-            Library.RegistryMap[TopBarLabel].Properties.TextColor3 = Info.IsNormal == true and "FontColor" or nil;
-            Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
-        end;
 
         function Tab:ShowTab()
             Library.ActiveTab = Name;
