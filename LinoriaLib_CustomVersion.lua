@@ -5191,12 +5191,47 @@ function Library:CreateWindow(...)
             end;
         end;
 
-        function Tab:UpdateWarningBox(Info)
-            if typeof(Info.Visible) == "boolean" then
-                TopBar.Visible = Info.Visible;
-                Tab:Resize();
-            end;
+function Tab:UpdateWarningBox(Info)
+    if typeof(Info.Visible) == "boolean" then
+        TopBar.Visible = Info.Visible;
+        Tab:Resize();
+    end;
+end
 
+-- кастомный "инфо-бокс"
+function Tab:UpdateInfoBox(Data)
+    self.InfoBox = self.InfoBox or Library:Create('Frame', {
+        BackgroundColor3 = Library.MainColor,
+        BorderColor3 = Library.OutlineColor,
+        BorderMode = Enum.BorderMode.Inset,
+        Size = UDim2.new(1, -10, 0, 60),
+        Position = UDim2.new(0, 5, 0, 40),
+        Visible = false,
+        Parent = self.Page
+    })
+
+    self.InfoTitle = self.InfoTitle or Library:CreateLabel({
+        Text = "",
+        Position = UDim2.new(0, 8, 0, 6),
+        TextSize = 16,
+        TextColor3 = Library.FontColor,
+        Parent = self.InfoBox
+    })
+
+    self.InfoText = self.InfoText or Library:CreateLabel({
+        Text = "",
+        Position = UDim2.new(0, 8, 0, 28),
+        TextSize = 14,
+        TextColor3 = Library.DisabledTextColor,
+        Parent = self.InfoBox
+    })
+
+    -- обновляем
+    self.InfoTitle.Text = Data.Title or ""
+    self.InfoText.Text = Data.Text or ""
+    self.InfoBox.Visible = Data.Visible or false
+end
+        
             if typeof(Info.Title) == "string" then
                 TopBarLabel.Text = Info.Title;
             end;
