@@ -5191,73 +5191,75 @@ function Library:CreateWindow(...)
             end;
         end;
 
-       function Tab:UpdateWarningBox(Info)
-    if typeof(Info.Visible) == "boolean" then
-        TopBar.Visible = Info.Visible;
-        Tab:Resize();
-    end;
+        function Tab:UpdateWarningBox(Info)
+            if typeof(Info.Visible) == "boolean" then
+                TopBar.Visible = Info.Visible;
+                Tab:Resize();
+            end;
 
-    if typeof(Info.Title) == "string" then
-        TopBarLabel.Text = Info.Title;
-    end;
+            if typeof(Info.Title) == "string" then
+                TopBarLabel.Text = Info.Title;
+            end;
 
-    if typeof(Info.Text) == "string" then
-        TopBarTextLabel.Text = Info.Text;
+            if typeof(Info.Text) == "string" then
+                TopBarTextLabel.Text = Info.Text;
+        
+                local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
+                TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
 
-        local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
-        TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
+                Tab:Resize();
+            end;
 
-        Tab:Resize();
-    end;
+            TopBar.BorderColor3 = Info.IsNormal == true and Color3.fromRGB(27, 42, 53) or Color3.fromRGB(248, 51, 51)
+            TopBarInner.BorderColor3 = Info.IsNormal == true and Library.OutlineColor or Color3.fromRGB(0, 0, 0)
+            TopBarInner.BackgroundColor3 = Info.IsNormal == true and Library.BackgroundColor or Color3.fromRGB(117, 22, 17)
+            TopBarHighlight.BackgroundColor3 = Info.IsNormal == true and Library.AccentColor or Color3.fromRGB(255, 75, 75)
+             
+            TopBarLabel.TextColor3 = Info.IsNormal == true and Library.FontColor or Color3.fromRGB(255, 55, 55)
+            TopBarLabelStroke.Color = Info.IsNormal == true and Library.Black or Color3.fromRGB(174, 3, 3)
 
-    TopBar.BorderColor3 = Info.IsNormal == true and Color3.fromRGB(27, 42, 53) or Color3.fromRGB(248, 51, 51)
-    TopBarInner.BorderColor3 = Info.IsNormal == true and Library.OutlineColor or Color3.fromRGB(0, 0, 0)
-    TopBarInner.BackgroundColor3 = Info.IsNormal == true and Library.BackgroundColor or Color3.fromRGB(117, 22, 17)
-    TopBarHighlight.BackgroundColor3 = Info.IsNormal == true and Library.AccentColor or Color3.fromRGB(255, 75, 75)
-    
-    TopBarLabel.TextColor3 = Info.IsNormal == true and Library.FontColor or Color3.fromRGB(255, 55, 55)
-    TopBarLabelStroke.Color = Info.IsNormal == true and Library.Black or Color3.fromRGB(174, 3, 3)
+            if not Library.RegistryMap[TopBarInner] then Library:AddToRegistry(TopBarInner, {}) end
+            if not Library.RegistryMap[TopBarHighlight] then Library:AddToRegistry(TopBarHighlight, {}) end
+            if not Library.RegistryMap[TopBarLabel] then Library:AddToRegistry(TopBarLabel, {}) end
+            if not Library.RegistryMap[TopBarLabelStroke] then Library:AddToRegistry(TopBarLabelStroke, {}) end
 
-    if not Library.RegistryMap[TopBarInner] then Library:AddToRegistry(TopBarInner, {}) end
-    if not Library.RegistryMap[TopBarHighlight] then Library:AddToRegistry(TopBarHighlight, {}) end
-    if not Library.RegistryMap[TopBarLabel] then Library:AddToRegistry(TopBarLabel, {}) end
-    if not Library.RegistryMap[TopBarLabelStroke] then Library:AddToRegistry(TopBarLabelStroke, {}) end
+            Library.RegistryMap[TopBarInner].Properties.BorderColor3 = Info.IsNormal == true and "OutlineColor" or nil;
+            Library.RegistryMap[TopBarInner].Properties.BackgroundColor3 = Info.IsNormal == true and "BackgroundColor" or nil;
+            Library.RegistryMap[TopBarHighlight].Properties.BackgroundColor3 = Info.IsNormal == true and "AccentColor" or nil;
 
-    Library.RegistryMap[TopBarInner].Properties.BorderColor3 = Info.IsNormal == true and "OutlineColor" or nil;
-    Library.RegistryMap[TopBarInner].Properties.BackgroundColor3 = Info.IsNormal == true and "BackgroundColor" or nil;
-    Library.RegistryMap[TopBarHighlight].Properties.BackgroundColor3 = Info.IsNormal == true and "AccentColor" or nil;
+            Library.RegistryMap[TopBarLabel].Properties.TextColor3 = Info.IsNormal == true and "FontColor" or nil;
+            Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
+        end;
 
-    Library.RegistryMap[TopBarLabel].Properties.TextColor3 = Info.IsNormal == true and "FontColor" or nil;
-    Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
-end
 
--- кастомный InfoBox (как WarningBox, но в цветах библиотеки)
 function Tab:UpdateInfoBox(Data)
-    self.InfoBox = self.InfoBox or Library:Create('Frame', {
-        BackgroundColor3 = Library.MainColor,
-        BorderColor3 = Library.OutlineColor,
-        BorderMode = Enum.BorderMode.Inset,
-        Size = UDim2.new(1, -10, 0, 60),
-        Position = UDim2.new(0, 5, 0, 40),
-        Visible = false,
-        Parent = self.Page
-    })
+    if not self.InfoBox then
+        self.InfoBox = Library:Create('Frame', {
+            BackgroundColor3 = Library.MainColor,
+            BorderColor3 = Library.OutlineColor,
+            BorderMode = Enum.BorderMode.Inset,
+            Size = UDim2.new(1, -13, 0, 60),
+            Position = UDim2.new(0, 6, 0, 8), -- сверху, по центру
+            Visible = false,
+            Parent = self.Page
+        })
 
-    self.InfoTitle = self.InfoTitle or Library:CreateLabel({
-        Text = "",
-        Position = UDim2.new(0, 8, 0, 6),
-        TextSize = 16,
-        TextColor3 = Library.FontColor,
-        Parent = self.InfoBox
-    })
+        self.InfoTitle = Library:CreateLabel({
+            Text = "",
+            Position = UDim2.new(0, 8, 0, 6),
+            TextSize = 16,
+            TextColor3 = Library.FontColor,
+            Parent = self.InfoBox
+        })
 
-    self.InfoText = self.InfoText or Library:CreateLabel({
-        Text = "",
-        Position = UDim2.new(0, 8, 0, 28),
-        TextSize = 14,
-        TextColor3 = Library.DisabledTextColor,
-        Parent = self.InfoBox
-    })
+        self.InfoText = Library:CreateLabel({
+            Text = "",
+            Position = UDim2.new(0, 8, 0, 28),
+            TextSize = 14,
+            TextColor3 = Library.DisabledTextColor,
+            Parent = self.InfoBox
+        })
+    end
 
     -- обновляем данные
     self.InfoTitle.Text = Data.Title or ""
@@ -5265,10 +5267,6 @@ function Tab:UpdateInfoBox(Data)
     self.InfoBox.Visible = Data.Visible or false
 end
 
--- алиас для удобства
-function Tab:UpdateInfoTab(Data)
-    return self:UpdateInfoBox(Data)
-end
 
         function Tab:ShowTab()
             Library.ActiveTab = Name;
