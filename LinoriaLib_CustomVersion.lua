@@ -5191,14 +5191,26 @@ function Library:CreateWindow(...)
             end;
         end;
 
-function Tab:UpdateWarningBox(Info)
-    if typeof(Info.Visible) == "boolean" then
-        TopBar.Visible = Info.Visible;
-        Tab:Resize();
-    end;
-end
+        function Tab:UpdateWarningBox(Info)
+            if typeof(Info.Visible) == "boolean" then
+                TopBar.Visible = Info.Visible;
+                Tab:Resize();
+            end;
 
--- кастомный "инфо-бокс"
+            if typeof(Info.Title) == "string" then
+                TopBarLabel.Text = Info.Title;
+            end;
+
+            if typeof(Info.Text) == "string" then
+                TopBarTextLabel.Text = Info.Text;
+        
+                local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
+                TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
+
+                Tab:Resize();
+            end;
+
+            -- кастомный info box (в тонах библиотеки)
 function Tab:UpdateInfoBox(Data)
     self.InfoBox = self.InfoBox or Library:Create('Frame', {
         BackgroundColor3 = Library.MainColor,
@@ -5226,24 +5238,12 @@ function Tab:UpdateInfoBox(Data)
         Parent = self.InfoBox
     })
 
-    -- обновляем
+    -- обновляем данные
     self.InfoTitle.Text = Data.Title or ""
     self.InfoText.Text = Data.Text or ""
     self.InfoBox.Visible = Data.Visible or false
 end
-        
-            if typeof(Info.Title) == "string" then
-                TopBarLabel.Text = Info.Title;
-            end;
 
-            if typeof(Info.Text) == "string" then
-                TopBarTextLabel.Text = Info.Text;
-        
-                local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
-                TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
-
-                Tab:Resize();
-            end;
 
             TopBar.BorderColor3 = Info.IsNormal == true and Color3.fromRGB(27, 42, 53) or Color3.fromRGB(248, 51, 51)
             TopBarInner.BorderColor3 = Info.IsNormal == true and Library.OutlineColor or Color3.fromRGB(0, 0, 0)
