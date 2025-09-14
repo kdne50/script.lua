@@ -5238,8 +5238,8 @@ function Tab:UpdateInfoBox(Data)
             BackgroundColor3 = Library.MainColor,
             BorderColor3 = Library.OutlineColor,
             BorderMode = Enum.BorderMode.Inset,
-            Size = UDim2.new(1, -13, 0, 60),
-            Position = UDim2.new(0, 6, 0, 8), -- сверху, по центру
+            Size = UDim2.new(0, 300, 0, 60),
+            Position = UDim2.new(0.5, -150, 0, 10), -- по центру сверху
             Visible = false,
             Parent = self.Page
         })
@@ -5261,13 +5261,16 @@ function Tab:UpdateInfoBox(Data)
         })
     end
 
-    -- обновляем данные
     self.InfoTitle.Text = Data.Title or ""
     self.InfoText.Text  = Data.Text or ""
     self.InfoBox.Visible = Data.Visible or false
 end
 
+function Tab:UpdateInfoTab(Data)
+    return self:UpdateInfoBox(Data)
+end
 
+        
         function Tab:ShowTab()
             Library.ActiveTab = Name;
             for _, Tab in next, Window.Tabs do
