@@ -5244,6 +5244,11 @@ function Tab:UpdateInfoBox(Data)
     self.InfoBox.Visible = Data.Visible or false
 end
 
+function Tab:UpdateInfoTab(Data)
+    return self:UpdateInfoBox(Data)
+end
+
+
 
             TopBar.BorderColor3 = Info.IsNormal == true and Color3.fromRGB(27, 42, 53) or Color3.fromRGB(248, 51, 51)
             TopBarInner.BorderColor3 = Info.IsNormal == true and Library.OutlineColor or Color3.fromRGB(0, 0, 0)
