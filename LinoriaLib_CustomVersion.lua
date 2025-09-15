@@ -5239,6 +5239,7 @@ function Library:CreateWindow(...)
 
     if typeof(Info.Title) == "string" then
         TopBarLabel.Text = Info.Title;
+        TopBarLabel.TextColor3 = Library.AccentColor -- акцент на заголовке
     end;
 
     if typeof(Info.Text) == "string" then
@@ -5247,13 +5248,15 @@ function Library:CreateWindow(...)
         local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
         TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
 
+        TopBarTextLabel.TextColor3 = Library.FontColor -- обычный текст в цвете темы
+
         Tab:Resize();
     end;
 
-    -- Нормальные цвета (не красный)
+    -- Боксы и фон в цветах темы
     TopBar.BorderColor3      = Library.OutlineColor
     TopBarInner.BorderColor3 = Library.OutlineColor
-    TopBarInner.BackgroundColor3 = Library.BackgroundColor
+    TopBarInner.BackgroundColor3 = Library.MainColor -- вместо BackgroundColor, чтобы был единый стиль
 end
 
 
