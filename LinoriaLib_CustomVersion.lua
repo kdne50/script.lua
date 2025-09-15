@@ -5239,8 +5239,8 @@ function Tab:UpdateInformationBox(Info)
 
     if typeof(Info.Title) == "string" then
         TopBarLabel.Text = Info.Title;
-        TopBarLabel.TextColor3 = Library.FontColor -- белый цвет
-        TopBarLabel.Font = Library.Font           -- обычный, не жирный
+        TopBarLabel.TextColor3 = Library.FontColor -- белый
+        TopBarLabel.Font = Library.Font           -- обычный (не жирный)
     end;
 
     if typeof(Info.Text) == "string" then
@@ -5254,13 +5254,22 @@ function Tab:UpdateInformationBox(Info)
         Tab:Resize();
     end;
 
-    -- Верхняя тонкая синяя полоска
-    TopBar.BorderColor3      = Color3.fromRGB(0, 85, 225)
-    TopBar.BackgroundColor3  = Color3.fromRGB(0, 85, 225)
+    -- Отключаем стандартную рамку
+    TopBar.BorderSizePixel = 0
+    TopBar.BackgroundColor3 = Library.MainColor
 
-    -- Секция под ней остаётся в цветах библиотеки
     TopBarInner.BorderColor3 = Library.OutlineColor
     TopBarInner.BackgroundColor3 = Library.MainColor
+
+    -- Добавляем тонкую синюю полоску сверху
+    if not TopBar:FindFirstChild("AccentLine") then
+        local AccentLine = Instance.new("Frame")
+        AccentLine.Name = "AccentLine"
+        AccentLine.Size = UDim2.new(1, 0, 0, 2)
+        AccentLine.BackgroundColor3 = Color3.fromRGB(0, 85, 225)
+        AccentLine.BorderSizePixel = 0
+        AccentLine.Parent = TopBar
+    end
 end
 
 
