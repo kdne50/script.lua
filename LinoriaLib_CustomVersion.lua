@@ -5231,7 +5231,38 @@ function Library:CreateWindow(...)
             Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
         end;
 
-function Tab:UpdateInformationBox(Info)
+
+        function Tab:ShowTab()
+            Library.ActiveTab = Name;
+            for _, Tab in next, Window.Tabs do
+                Tab:HideTab();
+            end;
+
+            Blocker.BackgroundTransparency = 0;
+            TabButton.BackgroundColor3 = Library.MainColor;
+            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
+            TabFrame.Visible = true;
+
+            Tab:Resize();
+        end;
+
+        function Tab:HideTab()
+            Blocker.BackgroundTransparency = 1;
+            TabButton.BackgroundColor3 = Library.BackgroundColor;
+            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
+            TabFrame.Visible = false;
+        end;
+
+        function Tab:SetLayoutOrder(Position)
+            TabButton.LayoutOrder = Position;
+            TabListLayout:ApplyLayout();
+        end;
+
+        function Tab:GetSides()
+            return { ["Left"] = LeftSide, ["Right"] = RightSide };
+        end;
+
+        function Tab:UpdateInformationBox(Info)
     if typeof(Info.Visible) == "boolean" then
         TopBar.Visible = Info.Visible
         Tab:Resize()
@@ -5276,36 +5307,6 @@ function Tab:UpdateInformationBox(Info)
     end
 end
 
-
-        function Tab:ShowTab()
-            Library.ActiveTab = Name;
-            for _, Tab in next, Window.Tabs do
-                Tab:HideTab();
-            end;
-
-            Blocker.BackgroundTransparency = 0;
-            TabButton.BackgroundColor3 = Library.MainColor;
-            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'MainColor';
-            TabFrame.Visible = true;
-
-            Tab:Resize();
-        end;
-
-        function Tab:HideTab()
-            Blocker.BackgroundTransparency = 1;
-            TabButton.BackgroundColor3 = Library.BackgroundColor;
-            Library.RegistryMap[TabButton].Properties.BackgroundColor3 = 'BackgroundColor';
-            TabFrame.Visible = false;
-        end;
-
-        function Tab:SetLayoutOrder(Position)
-            TabButton.LayoutOrder = Position;
-            TabListLayout:ApplyLayout();
-        end;
-
-        function Tab:GetSides()
-            return { ["Left"] = LeftSide, ["Right"] = RightSide };
-        end;
 
         function Tab:SetName(Name)
             if typeof(Name) == "string" then
