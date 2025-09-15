@@ -5231,7 +5231,7 @@ function Library:CreateWindow(...)
             Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
         end;
 
-        function Tab:UpdateInformationBox(Info)
+function Tab:UpdateInformationBox(Info)
     if typeof(Info.Visible) == "boolean" then
         TopBar.Visible = Info.Visible;
         Tab:Resize();
@@ -5239,8 +5239,8 @@ function Library:CreateWindow(...)
 
     if typeof(Info.Title) == "string" then
         TopBarLabel.Text = Info.Title;
-        TopBarLabel.TextColor3 = Library.FontColor -- белый
-        TopBarLabel.Font = Library.Font           -- обычный шрифт, без жирности
+        TopBarLabel.TextColor3 = Library.FontColor -- белый цвет
+        TopBarLabel.Font = Library.Font           -- обычный, не жирный
     end;
 
     if typeof(Info.Text) == "string" then
@@ -5249,15 +5249,18 @@ function Library:CreateWindow(...)
         local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
         TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
 
-        TopBarTextLabel.TextColor3 = Library.FontColor -- белый
-        TopBarTextLabel.Font = Library.Font            -- обычный
+        TopBarTextLabel.TextColor3 = Library.FontColor
+        TopBarTextLabel.Font = Library.Font
         Tab:Resize();
     end;
 
-    -- Верхушка (синяя, как AccentColor, 0,85,225)
+    -- Верхняя тонкая синяя полоска
     TopBar.BorderColor3      = Color3.fromRGB(0, 85, 225)
-    TopBarInner.BorderColor3 = Color3.fromRGB(0, 85, 225)
-    TopBarInner.BackgroundColor3 = Library.MainColor -- фон таба остаётся в цвете библиотеки
+    TopBar.BackgroundColor3  = Color3.fromRGB(0, 85, 225)
+
+    -- Секция под ней остаётся в цветах библиотеки
+    TopBarInner.BorderColor3 = Library.OutlineColor
+    TopBarInner.BackgroundColor3 = Library.MainColor
 end
 
 
