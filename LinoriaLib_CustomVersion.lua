@@ -5231,46 +5231,6 @@ function Library:CreateWindow(...)
             Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
         end;
 
-
-function Tab:UpdateInfoBox(Data)
-    if not self.InfoBox then
-        self.InfoBox = Library:Create('Frame', {
-            BackgroundColor3 = Library.MainColor,
-            BorderColor3 = Library.OutlineColor,
-            BorderMode = Enum.BorderMode.Inset,
-            Size = UDim2.new(0, 300, 0, 60),
-            Position = UDim2.new(0.5, -150, 0, 10), -- по центру сверху
-            Visible = false,
-            Parent = self.Page
-        })
-
-        self.InfoTitle = Library:CreateLabel({
-            Text = "",
-            Position = UDim2.new(0, 8, 0, 6),
-            TextSize = 16,
-            TextColor3 = Library.FontColor,
-            Parent = self.InfoBox
-        })
-
-        self.InfoText = Library:CreateLabel({
-            Text = "",
-            Position = UDim2.new(0, 8, 0, 28),
-            TextSize = 14,
-            TextColor3 = Library.DisabledTextColor,
-            Parent = self.InfoBox
-        })
-    end
-
-    self.InfoTitle.Text = Data.Title or ""
-    self.InfoText.Text  = Data.Text or ""
-    self.InfoBox.Visible = Data.Visible or false
-end
-
-function Tab:UpdateInfoTab(Data)
-    return self:UpdateInfoBox(Data)
-end
-
-        
         function Tab:ShowTab()
             Library.ActiveTab = Name;
             for _, Tab in next, Window.Tabs do
