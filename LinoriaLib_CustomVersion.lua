@@ -5231,6 +5231,32 @@ function Library:CreateWindow(...)
             Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
         end;
 
+        function Tab:UpdateInformationBox(Info)
+    if typeof(Info.Visible) == "boolean" then
+        TopBar.Visible = Info.Visible;
+        Tab:Resize();
+    end;
+
+    if typeof(Info.Title) == "string" then
+        TopBarLabel.Text = Info.Title;
+    end;
+
+    if typeof(Info.Text) == "string" then
+        TopBarTextLabel.Text = Info.Text;
+
+        local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
+        TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
+
+        Tab:Resize();
+    end;
+
+    -- Нормальные цвета (не красный)
+    TopBar.BorderColor3      = Library.OutlineColor
+    TopBarInner.BorderColor3 = Library.OutlineColor
+    TopBarInner.BackgroundColor3 = Library.BackgroundColor
+end
+
+
         function Tab:ShowTab()
             Library.ActiveTab = Name;
             for _, Tab in next, Window.Tabs do
