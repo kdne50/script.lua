@@ -5231,48 +5231,38 @@ function Library:CreateWindow(...)
             Library.RegistryMap[TopBarLabelStroke].Properties.Color = Info.IsNormal == true and "Black" or nil;
         end;
 
-function Tab:UpdateInformationBox(Info21)
-    if typeof(Info21.Visible) == "boolean" then
-        TopBar.Visible = Info21.Visible
+function Tab:UpdateInformationBox(Info)
+    if typeof(Info.Visible) == "boolean" then
+        TopBar.Visible = Info.Visible
         Tab:Resize()
     end
 
-    if typeof(Info21.Title) == "string" then
-        TopBarLabel.Text = Info21.Title
-        TopBarLabel.TextColor3 = Library.FontColor -- белый
-        TopBarLabel.Font = Library.Font            -- обычный (не жирный)
+    if typeof(Info.Title) == "string" then
+        TopBarLabel.Text = Info.Title
     end
 
-    if typeof(Info21.Text) == "string" then
-        TopBarTextLabel.Text = Info21.Text
-
-        local Y = select(2, Library:GetTextBounds(Info21.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)))
+    if typeof(Info.Text) == "string" then
+        TopBarTextLabel.Text = Info.Text
+        local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)))
         TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y)
-
-        TopBarTextLabel.TextColor3 = Library.FontColor
-        TopBarTextLabel.Font = Library.Font
         Tab:Resize()
     end
 
-    -- Сбрасываем дефолтное оформление
-    TopBar.BorderSizePixel = 0
-    TopBar.BackgroundColor3 = Library.MainColor
-    TopBar.BorderColor3 = Library.MainColor
+    -- Регистрируем элементы в системе темы
+    Library:AddToRegistry(TopBar, { BackgroundColor3 = 'MainColor', BorderColor3 = 'MainColor' })
+    Library:AddToRegistry(TopBarInner, { BackgroundColor3 = 'MainColor', BorderColor3 = 'OutlineColor' })
+    Library:AddToRegistry(TopBarLabel, { TextColor3 = 'FontColor' })
+    Library:AddToRegistry(TopBarTextLabel, { TextColor3 = 'FontColor' })
 
-    TopBarInner.BorderColor3 = Library.OutlineColor
-    TopBarInner.BackgroundColor3 = Library.MainColor
-
-    -- Добавляем только синюю полоску сверху
     if not TopBar:FindFirstChild("AccentLine") then
         local AccentLine = Instance.new("Frame")
         AccentLine.Name = "AccentLine"
         AccentLine.Size = UDim2.new(1, 0, 0, 2)
         AccentLine.Position = UDim2.new(0, 0, 0, 0)
-        AccentLine.BackgroundColor3 = Color3.fromRGB(0, 85, 225)
         AccentLine.BorderSizePixel = 0
         AccentLine.Parent = TopBar
-    else
-        TopBar.AccentLine.BackgroundColor3 = Color3.fromRGB(0, 85, 225)
+
+        Library:AddToRegistry(AccentLine, { BackgroundColor3 = 'AccentColor' })
     end
 end
 
