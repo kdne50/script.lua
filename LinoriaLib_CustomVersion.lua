@@ -5239,30 +5239,37 @@ function Tab:UpdateInformationBox(Info)
 
     if typeof(Info.Title) == "string" then
         TopBarLabel.Text = Info.Title
+        TopBarLabel.Font = Enum.Font.Ubuntu  -- тонкий аккуратный, не жирный
+        TopBarLabel.TextColor3 = Library.FontColor
     end
 
     if typeof(Info.Text) == "string" then
         TopBarTextLabel.Text = Info.Text
-        local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)))
+        TopBarTextLabel.Font = Enum.Font.Ubuntu  -- тоже тонкий
+        TopBarTextLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- зелёный как в примере
+
+        local Y = select(2, Library:GetTextBounds(Info.Text, TopBarTextLabel.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)))
         TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y)
         Tab:Resize()
     end
 
-    -- Регистрируем элементы в системе темы
+    -- Регистрация в теме
     Library:AddToRegistry(TopBar, { BackgroundColor3 = 'MainColor', BorderColor3 = 'MainColor' })
     Library:AddToRegistry(TopBarInner, { BackgroundColor3 = 'MainColor', BorderColor3 = 'OutlineColor' })
     Library:AddToRegistry(TopBarLabel, { TextColor3 = 'FontColor' })
     Library:AddToRegistry(TopBarTextLabel, { TextColor3 = 'FontColor' })
 
+    -- Голубая полоска (фиксированный цвет, не AccentColor)
     if not TopBar:FindFirstChild("AccentLine") then
         local AccentLine = Instance.new("Frame")
         AccentLine.Name = "AccentLine"
         AccentLine.Size = UDim2.new(1, 0, 0, 2)
         AccentLine.Position = UDim2.new(0, 0, 0, 0)
+        AccentLine.BackgroundColor3 = Color3.fromRGB(0, 85, 225) -- чисто как в mspaint
         AccentLine.BorderSizePixel = 0
         AccentLine.Parent = TopBar
-
-        Library:AddToRegistry(AccentLine, { BackgroundColor3 = 'AccentColor' })
+    else
+        TopBar.AccentLine.BackgroundColor3 = Color3.fromRGB(0, 85, 225)
     end
 end
 
