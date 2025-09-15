@@ -5233,42 +5233,46 @@ function Library:CreateWindow(...)
 
 function Tab:UpdateInformationBox(Info)
     if typeof(Info.Visible) == "boolean" then
-        TopBar.Visible = Info.Visible;
-        Tab:Resize();
-    end;
+        TopBar.Visible = Info.Visible
+        Tab:Resize()
+    end
 
     if typeof(Info.Title) == "string" then
-        TopBarLabel.Text = Info.Title;
+        TopBarLabel.Text = Info.Title
         TopBarLabel.TextColor3 = Library.FontColor -- белый
-        TopBarLabel.Font = Library.Font           -- обычный (не жирный)
-    end;
+        TopBarLabel.Font = Library.Font            -- обычный (не жирный)
+    end
 
     if typeof(Info.Text) == "string" then
-        TopBarTextLabel.Text = Info.Text;
+        TopBarTextLabel.Text = Info.Text
 
-        local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)));
-        TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y);
+        local Y = select(2, Library:GetTextBounds(Info.Text, Library.Font, 14, Vector2.new(TopBarTextLabel.AbsoluteSize.X, math.huge)))
+        TopBarTextLabel.Size = UDim2.new(1, -4, 0, Y)
 
         TopBarTextLabel.TextColor3 = Library.FontColor
         TopBarTextLabel.Font = Library.Font
-        Tab:Resize();
-    end;
+        Tab:Resize()
+    end
 
-    -- Отключаем стандартную рамку
+    -- Сбрасываем дефолтное оформление
     TopBar.BorderSizePixel = 0
     TopBar.BackgroundColor3 = Library.MainColor
+    TopBar.BorderColor3 = Library.MainColor
 
     TopBarInner.BorderColor3 = Library.OutlineColor
     TopBarInner.BackgroundColor3 = Library.MainColor
 
-    -- Добавляем тонкую синюю полоску сверху
+    -- Добавляем только синюю полоску сверху
     if not TopBar:FindFirstChild("AccentLine") then
         local AccentLine = Instance.new("Frame")
         AccentLine.Name = "AccentLine"
         AccentLine.Size = UDim2.new(1, 0, 0, 2)
+        AccentLine.Position = UDim2.new(0, 0, 0, 0)
         AccentLine.BackgroundColor3 = Color3.fromRGB(0, 85, 225)
         AccentLine.BorderSizePixel = 0
         AccentLine.Parent = TopBar
+    else
+        TopBar.AccentLine.BackgroundColor3 = Color3.fromRGB(0, 85, 225)
     end
 end
 
