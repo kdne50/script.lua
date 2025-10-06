@@ -1,8 +1,67 @@
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
+
+--------------------------------------------------
+-- == ПАРАМЕТРЫ == --
+--------------------------------------------------
+local highlightColor = Color3.fromRGB(0, 255, 255)
+local outlineColor = Color3.fromRGB(255, 255, 255)
+local baseFOV = Camera.FieldOfView
+local baseTextSize = 24
+local baseBillboardSize = UDim2.new(0, 200, 0, 50)
+
+--------------------------------------------------
+-- == НАСТРОЙКИ == --
+--------------------------------------------------
+local settings = {
+    HighlightEnabled = true,
+    TracerEnabled = true,
+    NameTagEnabled = true,
+    ArrowsEnabled = false,
+    DoorESPEnabled = false,
+    TextSize = 35,
+    Font = Enum.Font.Oswald,
+    TextTransparency = 0,
+    TextOutlineTransparency = 0.5,
+    ShowDistance = false,
+    MatchColors = true
+}
+
+--------------------------------------------------
+-- == ПАПКИ И ОБЪЕКТЫ == --
+--------------------------------------------------
+local ScreenGui = CoreGui:FindFirstChild("ItemESP_GUI") or Instance.new("ScreenGui")
+ScreenGui.Name = "ItemESP_GUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = CoreGui
+
+local ArrowsFrame = Instance.new("Frame")
+ArrowsFrame.Name = "ArrowsFrame"
+ArrowsFrame.Size = UDim2.new(1, 0, 1, 0)
+ArrowsFrame.BackgroundTransparency = 1
+ArrowsFrame.Parent = ScreenGui
+
+local HighlightsFolder = CoreGui:FindFirstChild("HighlightsFolder_ItemESP") or Instance.new("Folder")
+HighlightsFolder.Name = "HighlightsFolder_ItemESP"
+HighlightsFolder.Parent = CoreGui
+
+local ArrowTemplate = Instance.new("ImageLabel")
+ArrowTemplate.Image = "rbxassetid://2418687610"
+ArrowTemplate.Size = UDim2.new(0, 72, 0, 72)
+ArrowTemplate.AnchorPoint = Vector2.new(0.5, 0.5)
+ArrowTemplate.BackgroundTransparency = 1
+ArrowTemplate.ImageTransparency = 0
+local ratio = Instance.new("UIAspectRatioConstraint", ArrowTemplate)
+ratio.AspectRatio = 0.75
+
+--------------------------------------------------
+-- == СПИСКИ == --
+--------------------------------------------------
 local TargetItemsHighlights51 = {
     ["LiveHintBook"] = "Book",
     ["KeyObtain"] = "Key",
@@ -65,30 +124,14 @@ local TargetItemsHighlights51 = {
     ["LotusPetalPickup"] = "Lotus",
     ["GlitchCube"] = "Glitch-Fragment",
 }
-
 local EntitiesHighlights203 = {}
-local highlightColor = Color3.fromRGB(0, 255, 255)
-local outlineColor = Color3.fromRGB(255, 255, 255)
-local highlights, tracers, nametags = {}, {}, {}
-local connections, renderConnection = {}, nil
 
-local settings = {
-    HighlightEnabled = true,
-    TracerEnabled = true,
-    NameTagEnabled = true,
-    TextSize = 35,
-    Font = Enum.Font.Oswald,
-    TextTransparency = 0,
-    TextOutlineTransparency = 0.5,
-    ShowDistance = false,
-    DistanceSizeRatio = 1.0,
-    MatchColors = true
-}
+local highlights, tracers, nametags, arrows = {}, {}, {}, {}
+local connections, renderConnection, doorConnection = {}, nil, nil
 
-local baseFOV = Camera.FieldOfView
-local baseTextSize = 24
-local baseBillboardSize = UDim2.new(0, 200, 0, 50)
-
+--------------------------------------------------
+-- == ПРОВЕРКИ == --
+--------------------------------------------------
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
         if player.Character and model:IsDescendantOf(player.Character) then return true end
@@ -98,20 +141,27 @@ local function isHeldByPlayer(model)
 end
 
 local function isIgnored(model)
-    return model:IsDescendantOf(LocalPlayer.Backpack) or model:IsDescendantOf(LocalPlayer.Character) or isHeldByPlayer(model)
+    return model:IsDescendantOf(LocalPlayer.Backpack)
+        or model:IsDescendantOf(LocalPlayer.Character)
+        or isHeldByPlayer(model)
 end
 
+--------------------------------------------------
+-- == ОСНОВНЫЕ ФУНКЦИИ == --
+--------------------------------------------------
 local function clearESP()
     for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
     for _, t in pairs(tracers) do pcall(function() t:Remove() end) end
     for _, n in pairs(nametags) do pcall(function() n:Destroy() end) end
-    highlights, tracers, nametags = {}, {}, {}
+    for _, a in pairs(arrows) do pcall(function() a:Destroy() end) end
+    highlights, tracers, nametags, arrows = {}, {}, {}, {}
 end
 
 local function removeModelRefs(model)
     if highlights[model] then pcall(function() highlights[model]:Destroy() end) highlights[model] = nil end
     if tracers[model] then pcall(function() tracers[model]:Remove() end) tracers[model] = nil end
     if nametags[model] then pcall(function() nametags[model]:Destroy() end) nametags[model] = nil end
+    if arrows[model] then pcall(function() arrows[model]:Destroy() end) arrows[model] = nil end
 end
 
 local function addHighlight(model)
@@ -123,7 +173,7 @@ local function addHighlight(model)
         h.FillTransparency = 0.8
         h.OutlineTransparency = 0
         h.Adornee = model
-        h.Parent = model
+        h.Parent = HighlightsFolder
         highlights[model] = h
     end
 end
@@ -167,11 +217,50 @@ local function addNameTag(model)
     end
 end
 
+local function addArrow(model)
+    if not arrows[model] and settings.ArrowsEnabled then
+        local arrow = ArrowTemplate:Clone()
+        arrow.Parent = ArrowsFrame
+        arrow.Visible = true
+        arrows[model] = arrow
+    end
+end
+
+local function updateArrow(model)
+    if not settings.ArrowsEnabled then
+        if arrows[model] then arrows[model].Visible = false end
+        return
+    end
+    local part = model:FindFirstChildWhichIsA("BasePart")
+    if not part then return end
+    local screenPoint, onScreen = Camera:WorldToViewportPoint(part.Position)
+    if onScreen and screenPoint.Z > 0 then
+        if arrows[model] then arrows[model].Visible = false end
+    else
+        if not arrows[model] then addArrow(model) end
+        local screenSize = Camera.ViewportSize
+        local screenCenter = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+        local dir = Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter
+        if dir.Magnitude == 0 then dir = Vector2.new(0.01, 0.01) end
+        local angle = math.atan2(dir.Y, dir.X)
+        local radius = math.min(screenSize.X, screenSize.Y) / 2 - 200
+        local arrowPos = screenCenter + dir.Unit * radius
+        arrows[model].Position = UDim2.new(0, arrowPos.X, 0, arrowPos.Y)
+        arrows[model].Rotation = math.deg(angle) - 180
+        arrows[model].ImageColor3 = highlightColor
+        arrows[model].Visible = true
+    end
+end
+
+--------------------------------------------------
+-- == ДОПОЛНИТЕЛЬНЫЕ == --
+--------------------------------------------------
 local function processModel(model)
     if TargetItemsHighlights51[model.Name] and model:IsA("Model") and model:IsDescendantOf(Workspace) and not isIgnored(model) then
         addHighlight(model)
         addTracer(model)
         addNameTag(model)
+        if settings.ArrowsEnabled then addArrow(model) end
     else
         removeModelRefs(model)
     end
@@ -184,70 +273,54 @@ local function scan()
     end
 end
 
-local function onNewChild(obj)
-    task.delay(0.05, function()
-        processModel(obj)
-    end)
+local function getNearestDoor()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local nearest, dist = nil, math.huge
+    for _, room in pairs(workspace.CurrentRooms:GetChildren()) do
+        local door = room:FindFirstChild("Door")
+        if door and door:FindFirstChildWhichIsA("BasePart") then
+            local d = (door:GetPivot().Position - hrp.Position).Magnitude
+            if d < dist then
+                dist = d
+                nearest = door
+            end
+        end
+    end
+    return nearest
 end
 
+local currentDoor = nil
+local function updateDoorESP()
+    if not settings.DoorESPEnabled then
+        if currentDoor then
+            removeModelRefs(currentDoor)
+            currentDoor = nil
+        end
+        return
+    end
+    local door = getNearestDoor()
+    if door ~= currentDoor then
+        if currentDoor then removeModelRefs(currentDoor) end
+        if door then addHighlight(door) end
+        currentDoor = door
+    end
+end
+
+--------------------------------------------------
+-- == ГЛАВНЫЙ ЦИКЛ == --
+--------------------------------------------------
 local function enable()
     disable()
     scan()
-
-    table.insert(connections, Workspace.DescendantAdded:Connect(onNewChild))
+    table.insert(connections, Workspace.DescendantAdded:Connect(function(obj) task.defer(processModel, obj) end))
     table.insert(connections, Workspace.DescendantRemoving:Connect(removeModelRefs))
-
-    table.insert(connections, LocalPlayer.CharacterAdded:Connect(function()
-        task.wait(1)
-        scan()
-    end))
-
     renderConnection = RunService.RenderStepped:Connect(function()
-        local character = LocalPlayer.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        local currentFOV = Camera.FieldOfView
-        local fovRatio = currentFOV / baseFOV
-
-        for model, line in pairs(tracers) do
-            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
-                pcall(function() line:Remove() end)
-                tracers[model] = nil
-            else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                if part and root then
-                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    line.To = Vector2.new(pos.X, pos.Y)
-                    line.Visible = onScreen
-                else
-                    line.Visible = false
-                end
-            end
+        for model, _ in pairs(highlights) do
+            updateArrow(model)
         end
-
-        for model, tag in pairs(nametags) do
-            if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
-                pcall(function() tag:Destroy() end)
-                nametags[model] = nil
-            else
-                local part = model:FindFirstChildWhichIsA("BasePart")
-                local label = tag:FindFirstChildOfClass("TextLabel")
-                if part and label then
-                    if root and settings.ShowDistance then
-                        local distance = math.floor((root.Position - part.Position).Magnitude)
-                        label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, distance)
-                    else
-                        label.Text = TargetItemsHighlights51[model.Name] or model.Name
-                    end
-                    local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
-                    label.TextSize = newTextSize
-
-                    local scaleFactor = newTextSize / baseTextSize
-                    tag.Size = UDim2.new(baseBillboardSize.X.Scale, baseBillboardSize.X.Offset * scaleFactor,
-                                         baseBillboardSize.Y.Scale, baseBillboardSize.Y.Offset * scaleFactor)
-                end
-            end
-        end
+        updateDoorESP()
     end)
 end
 
@@ -258,30 +331,27 @@ function disable()
     clearESP()
 end
 
-function setHighlight(v) settings.HighlightEnabled = v scan() end
-function setTracer(v) settings.TracerEnabled = v scan() end
-function setNameTag(v) settings.NameTagEnabled = v scan() end
-function setFont(font) settings.Font = font scan() end
-function setTextSize(size) settings.TextSize = size scan() end
-function setTextTransparency(val) settings.TextTransparency = val scan() end
-function setTextOutlineTransparency(val) settings.TextOutlineTransparency = val scan() end
-function setShowDistance(val) settings.ShowDistance = val scan() end
-function setMatchColors(val) settings.MatchColors = val scan() end
-function setDistanceSizeRatio(val) settings.DistanceSizeRatio = val scan() end
+--------------------------------------------------
+-- == ДОПОЛНИТЕЛЬНЫЕ ВКЛ/ВЫКЛ == --
+--------------------------------------------------
+function EnableArrows() settings.ArrowsEnabled = true end
+function DisableArrows() settings.ArrowsEnabled = false end
+function EnableDoors() settings.DoorESPEnabled = true end
+function DisableDoors() settings.DoorESPEnabled = false end
 
+--------------------------------------------------
+-- == ВОЗВРАТ == --
+--------------------------------------------------
 return {
     EnableESP = enable,
     DisableESP = disable,
-    SetHighlight = setHighlight,
-    SetTracer = setTracer,
-    SetNameTag = setNameTag,
-    SetFont = setFont,
-    SetTextSize = setTextSize,
-    SetTextTransparency = setTextTransparency,
-    SetTextOutlineTransparency = setTextOutlineTransparency,
-    SetShowDistance = setShowDistance,
-    SetMatchColors = setMatchColors,
-    SetDistanceSizeRatio = setDistanceSizeRatio,
+    EnableArrows = EnableArrows,
+    DisableArrows = DisableArrows,
+    EnableDoors = EnableDoors,
+    DisableDoors = DisableDoors,
+    SetHighlight = function(v) settings.HighlightEnabled = v scan() end,
+    SetTracer = function(v) settings.TracerEnabled = v scan() end,
+    SetNameTag = function(v) settings.NameTagEnabled = v scan() end,
     TargetItemsHighlights51 = TargetItemsHighlights51,
     EntitiesHighlights203 = EntitiesHighlights203
 }
