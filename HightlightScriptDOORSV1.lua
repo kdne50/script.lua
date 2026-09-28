@@ -23,7 +23,9 @@ local TargetItemsHighlights51 = {
     ["HoneyPot"] = "Honey Pot",
     ["Pizza"] = "Pizza",
     ["PaperPlane"] = "Paper Plane",
-    ["Leftovers"] = "Leftovers",
+    ["Leftovers"] = "Lunch Box",
+    ["FishFlakes"] = "Fish Flakes",
+    ["Briefcase"] = "Briefcase",
 }
 
 local EntitiesHighlights203 = {}
@@ -37,7 +39,7 @@ local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
     NameTagEnabled = true,
-    TextSize = 45,
+    TextSize = 28,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
@@ -47,8 +49,8 @@ local settings = {
 }
 
 local baseFOV = Camera.FieldOfView
-local baseTextSize = 32 -- Увеличено с 24 до 32 для крупного отображения
-local baseBillboardSize = UDim2.new(0, 250, 0, 60)
+local baseTextSize = 28
+local baseBillboardSize = UDim2.new(0, 200, 0, 50)
 
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
@@ -180,6 +182,7 @@ local function enable()
         local root = character and character:FindFirstChild("HumanoidRootPart")
         local currentFOV = Camera.FieldOfView
         local fovRatio = currentFOV / baseFOV
+
         for model, line in pairs(tracers) do
             if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.TracerEnabled then
                 pcall(function() line:Remove() end)
@@ -196,6 +199,7 @@ local function enable()
                 end
             end
         end
+
         for model, tag in pairs(nametags) do
             if not model or not model:IsDescendantOf(Workspace) or isIgnored(model) or not settings.NameTagEnabled then
                 pcall(function() tag:Destroy() end)
@@ -204,13 +208,17 @@ local function enable()
                 local part = model:FindFirstChildWhichIsA("BasePart")
                 local label = tag:FindFirstChildOfClass("TextLabel")
                 if part and label then
+                    local distance = root and (root.Position - part.Position).Magnitude or 0
+                    
                     if root and settings.ShowDistance then
-                        local distance = math.floor((root.Position - part.Position).Magnitude)
-                        label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, distance)
+                        label.Text = string.format("%s [%d]", TargetItemsHighlights51[model.Name] or model.Name, math.floor(distance))
                     else
                         label.Text = TargetItemsHighlights51[model.Name] or model.Name
                     end
-                    local newTextSize = math.clamp(baseTextSize * fovRatio, 16, 60)
+
+                    local distanceFactor = math.clamp(1 - (distance / 120), 0.35, 1.0)
+                    local newTextSize = math.clamp(baseTextSize * fovRatio * distanceFactor, 10, 32)
+                    
                     label.TextSize = newTextSize
                     local scaleFactor = newTextSize / baseTextSize
                     tag.Size = UDim2.new(
