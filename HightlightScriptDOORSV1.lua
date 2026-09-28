@@ -20,11 +20,15 @@ local TargetItemsHighlights51 = {
     ["Compass"] = "Compass", ["Lotus"] = "Big-Lotus", ["NannerPeel"] = "NannerPeel", ["HolyGrenade"] = "Holy-Grenade", 
     ["StopSign"] = "Stop-Sign", ["StardustPickup"] = "Stardust", ["GoldPile"] = "Gold", ["LotusPetalPickup"] = "Lotus", 
     ["GlitchCube"] = "Glitch-Fragment",
+    ["HoneyPot"] = "Honey Pot",
+    ["Pizza"] = "Pizza",
+    ["PaperPlane"] = "Paper Plane",
+    ["Leftovers"] = "Leftovers",
 }
 
 local EntitiesHighlights203 = {}
 
-local highlightColor = Color3.fromRGB(0, 255, 255)
+local highlightColor = Color3.fromRGB(46, 204, 113) 
 local outlineColor = Color3.fromRGB(255, 255, 255)
 local highlights, tracers, nametags = {}, {}, {}
 local connections, renderConnection = {}, nil
@@ -33,7 +37,7 @@ local settings = {
     HighlightEnabled = true,
     TracerEnabled = true,
     NameTagEnabled = true,
-    TextSize = 35,
+    TextSize = 45,
     Font = Enum.Font.Oswald,
     TextTransparency = 0,
     TextOutlineTransparency = 0.5,
@@ -43,8 +47,8 @@ local settings = {
 }
 
 local baseFOV = Camera.FieldOfView
-local baseTextSize = 24
-local baseBillboardSize = UDim2.new(0, 200, 0, 50)
+local baseTextSize = 32 -- Увеличено с 24 до 32 для крупного отображения
+local baseBillboardSize = UDim2.new(0, 250, 0, 60)
 
 local function isHeldByPlayer(model)
     for _, player in pairs(Players:GetPlayers()) do
@@ -206,7 +210,7 @@ local function enable()
                     else
                         label.Text = TargetItemsHighlights51[model.Name] or model.Name
                     end
-                    local newTextSize = math.clamp(baseTextSize * fovRatio, 12, 48)
+                    local newTextSize = math.clamp(baseTextSize * fovRatio, 16, 60)
                     label.TextSize = newTextSize
                     local scaleFactor = newTextSize / baseTextSize
                     tag.Size = UDim2.new(
