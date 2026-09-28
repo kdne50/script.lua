@@ -216,7 +216,7 @@ local function enable()
                         label.Text = TargetItemsHighlights51[model.Name] or model.Name
                     end
 
-                    local distanceFactor = math.clamp(1 - (distance / 120), 0.35, 1.0)
+                    local distanceFactor = math.clamp(1 - ((distance - 150) / 250), 0.5, 1.0)
                     local newTextSize = math.clamp(baseTextSize * fovRatio * distanceFactor, 10, 32)
                     
                     label.TextSize = newTextSize
